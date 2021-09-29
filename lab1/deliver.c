@@ -1,15 +1,21 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <string.h> 
+#include <stdlib.h> 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <netdb.h>
 
 #define FTP_STR "ftp"
-int main(int argc, char *argv[] ){
+
+int main(int argc, char *argv[]) {
     char *address;
     int port;
-    if( argc == 3 ) {
+    if (argc == 3) {
         address = argv[1];
         port = atoi(argv[2]);
-    }else {
+    } else {
         printf("Usage: deliver <server address> <server port number>. \n");
         return 0;
     }
@@ -17,18 +23,30 @@ int main(int argc, char *argv[] ){
     char file_name[256];
     printf("Enter your message in the format of \'ftp <file name>\': ");
     scanf("%s %s", ftp_cmd, file_name);
-    if (strcmp(ftp_cmd, FTP_STR) == 0){
-        printf("ftp cmd \n");
-    }else{
-        printf("no ftp \n");
+
+    if (strcmp(ftp_cmd, FTP_STR) != 0) {
+        printf("%s: Command not found.", ftp_cmd);
         return 0;
     }
+
     FILE *file;
-    if((file = fopen(file_name,"r"))!=NULL){
-        printf("file exists \n");
-        fclose(file);
-    }else{
-        printf("file does not exist \n");
+    if ((file = fopen(file_name, "r")) == NULL) {
+        printf("File does not exist. \n");
+        return 0;
     }
+
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    inet_aton(address, &server_addr.sin_addr.s_addr);
+    
+    socklen_t server_addr_len = sizeof (server_addr);
+
+    sendto(sockfd, "ftp", sizeof ("ftp"), MSG_CONFIRM,
+            (struct sockaddr *) &server_addr, server_addr_len);
+
+    fclose(file);
     return 0;
 }
