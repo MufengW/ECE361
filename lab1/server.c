@@ -4,8 +4,11 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
+
 #define FTP_STR "ftp"
-#define LEN 1024
+#define YES "yes"
+#define NO "no"
+#define BUFF_LEN 1024
 
 int main(int argc, char *argv[]) {
     char *port;
@@ -24,20 +27,25 @@ int main(int argc, char *argv[]) {
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     getaddrinfo(NULL, port, &hints, &res);
-    
+
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     bind(sockfd, res->ai_addr, res->ai_addrlen);
 
     printf("Server receiving on port %s\n", port);
 
-    char buf[LEN];
+    char buf[BUFF_LEN];
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof (client_addr);
 
     recvfrom(sockfd, (char*) buf, sizeof (buf), MSG_WAITALL,
             (struct sockaddr *) &client_addr, &client_len);
-    
-    printf("Received %s\n", buf);
 
+    if (strcmp(buf, FTP_STR) == 0) {
+        sendto(sockfd, YES, sizeof (YES), MSG_CONFIRM,
+                (struct sockaddr *) &client_addr, client_len);
+    } else {
+        sendto(sockfd, NO, sizeof (NO), MSG_CONFIRM,
+                (struct sockaddr *) &client_addr, client_len);
+    }
     return 0;
 }
