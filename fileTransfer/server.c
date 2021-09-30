@@ -1,9 +1,10 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define FTP_STR "ftp"
 #define YES "yes"
@@ -11,25 +12,38 @@
 #define BUFF_LEN 1024
 
 int main(int argc, char *argv[]) {
-    char *port;
-    if (argc == 2) {
-        port = argv[1];
-    } else {
+    if (argc != 2) {
         printf("Usage: server <UDP listen port>. \n");
-        return 0;
+        exit(1);
     }
+    char *port;
+    port = argv[1];
 
-    struct addrinfo hints, *res;
+    struct addrinfo hints, *servinfo;
     int sockfd;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
-    getaddrinfo(NULL, port, &hints, &res);
+    int rv = getaddrinfo(NULL, port, &hints, &servinfo);
+    if(rv != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        exit(1);
+    }
 
-    sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    bind(sockfd, res->ai_addr, res->ai_addrlen);
+    sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
+    if (sockfd == -1) {
+        perror("listener: socket");
+        exit(1);
+    }
+    if (bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
+        close(sockfd);
+        perror("listener: bind");
+        exit(1);
+    }
+
+    freeaddrinfo(servinfo);
 
     printf("Server receiving on port %s\n", port);
 
@@ -37,15 +51,24 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof (client_addr);
 
-    recvfrom(sockfd, (char*) buf, sizeof (buf), MSG_WAITALL,
-            (struct sockaddr *) &client_addr, &client_len);
+    if (recvfrom(sockfd, (char*) buf, sizeof (buf), MSG_WAITALL,
+            (struct sockaddr *) &client_addr, &client_len) == -1) {
+        perror("recvfrom");
+        exit(1);
+    }
 
     if (strcmp(buf, FTP_STR) == 0) {
-        sendto(sockfd, YES, sizeof (YES), MSG_CONFIRM,
-                (struct sockaddr *) &client_addr, client_len);
+        if (sendto(sockfd, YES, sizeof (YES), MSG_CONFIRM,
+                (struct sockaddr *) &client_addr, client_len) == -1) {
+            perror("server: sendto");
+            exit(1);
+        }
     } else {
-        sendto(sockfd, NO, sizeof (NO), MSG_CONFIRM,
-                (struct sockaddr *) &client_addr, client_len);
+        if(sendto(sockfd, NO, sizeof (NO), MSG_CONFIRM,
+                (struct sockaddr *) &client_addr, client_len) == -1) {
+            perror("server: sendto");
+            exit(1);
+        }
     }
     return 0;
 }
