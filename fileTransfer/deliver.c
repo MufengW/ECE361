@@ -25,18 +25,28 @@ int main(int argc, char *argv[]) {
     address = argv[1];
     port = atoi(argv[2]);
 
-    char ftp_cmd[3];
-    char file_name[256];
-
     printf("Enter your message in the format of \'ftp <file name>\': \n");
 
-    scanf("%s %s", ftp_cmd, file_name);
+    char prompt[256];
+    fgets(prompt, 256, stdin);
 
+    char delim[] = " \n\t\v\f\r";
+    char *ftp_cmd = strtok(prompt,delim);
     if (strcmp(ftp_cmd, FTP_STR) != 0) {
         printf("%s: Command not found.\n", ftp_cmd);
         exit(1);
     }
 
+    char *file_name = strtok(NULL,delim);
+    if(!file_name) {
+	    printf("Please enter a file followed by 'ftp'.\n");
+	    exit(1);
+    }
+    char *extra_word = strtok(NULL,delim);
+    if(extra_word) {
+	    printf("%s: extra input!\n", extra_word);
+	    exit(1);
+    }
     int src_fd = 0;
     src_fd = open(file_name, O_RDONLY);
     if(src_fd < 0) {

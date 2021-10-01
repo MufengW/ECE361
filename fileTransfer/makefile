@@ -1,3 +1,4 @@
+CFLAGS := -g -Wall -Werror
 CC=gcc
 all: server deliver
 server: server.o
