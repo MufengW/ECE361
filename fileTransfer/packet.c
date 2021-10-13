@@ -7,3 +7,10 @@ void serializePacket(const Packet *packet, char *result){
 void deserializePacket(const char* str, Packet *packet){
     printf("deserializePacket\n");    
 }
+
+void packetsToFile(const Packet *packet[], FILE *pFile){    
+    printf("packetToFile\n");    
+}
+void fileToPackets(const FILE *pFile, Packet *packet[]){    
+    printf("fileToPacket\n");    
+}
