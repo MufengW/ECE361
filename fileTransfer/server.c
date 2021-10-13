@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include "packet.h"
 
 #define FTP_STR "ftp"
 #define YES "yes"
