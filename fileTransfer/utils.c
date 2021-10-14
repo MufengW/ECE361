@@ -13,19 +13,19 @@
 #include <unistd.h>
 #include "packet.h"
 
-void sendMsg(int sockfd, const void* msg, struct sockaddr_in server_addr) {
-    socklen_t server_addr_len = sizeof (server_addr);
+void sendMsg(int sockfd, const void* msg, struct sockaddr_in *addr) {
+    socklen_t addr_len = sizeof (*addr);
     if (sendto(sockfd, msg, BUFF_SIZE, MSG_CONFIRM,
-            (struct sockaddr *) &server_addr, server_addr_len) == -1) {
+            (struct sockaddr *) addr, addr_len) == -1) {
         perror("sendto");
         exit(1);
     }
 }
 
-void recvMsg(int sockfd, struct sockaddr_in server_addr, char* buf) {
-    socklen_t server_addr_len = sizeof (server_addr);
+void recvMsg(int sockfd, struct sockaddr_in *addr, char* buf) {
+    socklen_t addr_len = sizeof (*addr);
     if (recvfrom(sockfd, (char*) buf, BUFF_SIZE, MSG_WAITALL,
-            (struct sockaddr*) &server_addr, &server_addr_len) == -1) {
+            (struct sockaddr*) addr, &addr_len) == -1) {
         perror("recvfrom");
         exit(1);
     }

@@ -47,20 +47,20 @@ int main(int argc, char *argv[]) {
     char buf[BUFF_SIZE];
     struct sockaddr_in client_addr;
 
-    recvMsg(sockfd, client_addr, buf);
+    recvMsg(sockfd, &client_addr, buf);
 
     if (strcmp(buf, FTP_STR) == 0) {
-        sendMsg(sockfd, YES, client_addr);
+        sendMsg(sockfd, YES, &client_addr);
         printf("A file transfer can start.\n");
     } else {
-        sendMsg(sockfd, NO, client_addr);
+        sendMsg(sockfd, NO, &client_addr);
         printf("%s: Command not found.\n", buf);
         exit(1);
     }
 
     // recv string
     char serializedPacket[BUFF_SIZE];
-    recvMsg(sockfd, client_addr, serializedPacket);
+    recvMsg(sockfd, &client_addr, serializedPacket);
 
     Packet* packet = (Packet*) malloc(sizeof (Packet));
     deserializePacket(serializedPacket, packet);
@@ -70,12 +70,12 @@ int main(int argc, char *argv[]) {
 
     p[0] = packet;
 
-    sendMsg(sockfd, ACK, client_addr);
+    sendMsg(sockfd, ACK, &client_addr);
     for (int i = 1; i < packet_no; ++i) {
-        recvMsg(sockfd, client_addr, serializedPacket);
+        recvMsg(sockfd, &client_addr, serializedPacket);
 	p[i] = (Packet*)malloc(sizeof(Packet));
         deserializePacket(serializedPacket, p[i]);
-        sendMsg(sockfd, ACK, client_addr);
+        sendMsg(sockfd, ACK, &client_addr);
     }
 
     packetsToFile((const Packet**) p, pFile);

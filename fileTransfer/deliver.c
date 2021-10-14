@@ -67,10 +67,10 @@ int main(int argc, char *argv[]) {
     server_addr.sin_port = htons(port);
     inet_aton(address, &server_addr.sin_addr);
 
-    sendMsg(sockfd, FTP_STR, server_addr);
+    sendMsg(sockfd, FTP_STR, &server_addr);
 
     char buf[BUFF_SIZE];
-    recvMsg(sockfd, server_addr, buf);
+    recvMsg(sockfd, &server_addr, buf);
 
     if (strcmp(buf, YES) == 0) {
         printf("A file transfer can start.\n");
@@ -88,8 +88,8 @@ int main(int argc, char *argv[]) {
     int i = 0;
     for (i = 0; i < packet_no; ++i) {
         serializePacket((const Packet*) packet[i], serializedPacket);
-        sendMsg(sockfd, serializedPacket, server_addr);
-        recvMsg(sockfd, server_addr, buf);
+        sendMsg(sockfd, serializedPacket, &server_addr);
+        recvMsg(sockfd, &server_addr, buf);
         while (strcmp(buf, ACK) != 0) {
             printf("Waiting for server to ACK packet %d/%d\n", i, packet_no);
         }
