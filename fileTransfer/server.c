@@ -46,28 +46,17 @@ int main(int argc, char *argv[]) {
 
     char buf[BUFF_SIZE];
     struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof (client_addr);
 
-    if (recvfrom(sockfd, (char*) buf, sizeof (buf), MSG_WAITALL,
-            (struct sockaddr *) &client_addr, &client_len) == -1) {
-        perror("recvfrom");
-        exit(1);
-    }
+    recvMsg(sockfd, client_addr, buf);
 
     if (strcmp(buf, FTP_STR) == 0) {
-        if (sendto(sockfd, YES, sizeof (YES), MSG_CONFIRM,
-                (struct sockaddr *) &client_addr, client_len) == -1) {
-            perror("server: sendto");
-            exit(1);
-        }
+        sendMsg(sockfd, YES, client_addr);
+        printf("A file transfer can start.\n");
     } else {
-        if (sendto(sockfd, NO, sizeof (NO), MSG_CONFIRM,
-                (struct sockaddr *) &client_addr, client_len) == -1) {
-            perror("server: sendto");
-            exit(1);
-        }
+        sendMsg(sockfd, NO, client_addr);
+        printf("%s: Command not found.\n", buf);
+        exit(1);
     }
-
 
     // recv string
     char serializedPacket[BUFF_SIZE];
@@ -93,7 +82,7 @@ int main(int argc, char *argv[]) {
     }
 
     packetsToFile((const Packet**) p, pFile);
-    
+
     printf("Finished writing file\n");
     free_packet(p, packet_no);
     return 0;
