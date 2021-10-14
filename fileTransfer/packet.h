@@ -2,7 +2,7 @@
 #define PACKET_H
 
 #define DATA_SIZE 1000
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 2048
 #define DELIMITER ':'
 
 #define FTP_STR "ftp"

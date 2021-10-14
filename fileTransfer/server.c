@@ -69,13 +69,25 @@ int main(int argc, char *argv[]) {
 
 
     // recv string
-    char* serializedPacket = NULL;
+    char serializedPacket[DATA_SIZE];
+    if (recvfrom(sockfd, (char*) serializedPacket, sizeof (serializedPacket), MSG_WAITALL,
+            (struct sockaddr *) &client_addr, &client_len) == -1) {
+        perror("recvfrom");
+        exit(1);
+    }
     //recvfrom(... serializedPacket ...) in a loop
-    Packet* packet = NULL;
+    Packet* packet = (Packet*)malloc(sizeof(Packet));
     deserializePacket(serializedPacket, packet);
     int packet_no = packet->total_frag;
     char* pFile = packet->filename;
-    Packet **p = malloc(sizeof (Packet*) * packet_no);
+    Packet **p = (Packet**)malloc(sizeof(Packet*) * packet_no);
+
+
+        if (sendto(sockfd, YES, sizeof (YES), MSG_CONFIRM,
+                (struct sockaddr *) &client_addr, client_len) == -1) {
+            perror("server: sendto");
+            exit(1);
+        }
     //for loop
     //p[i] = new recieved packet
     //reply ACK
