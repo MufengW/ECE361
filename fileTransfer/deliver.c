@@ -14,7 +14,6 @@
 
 #define FTP_STR "ftp"
 #define YES "yes"
-#define BUFF_LEN 1024
 
 int main(int argc, char *argv[]) {
     char *address;
@@ -79,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    char buf[BUFF_LEN];
+    char buf[BUFF_SIZE];
     if(recvfrom(sockfd, (char*) buf, sizeof (buf), MSG_WAITALL,
             (struct sockaddr*) &server_addr, &server_addr_len) == -1) {
         perror("client: recvfrom");

@@ -10,7 +10,6 @@
 #define FTP_STR "ftp"
 #define YES "yes"
 #define NO "no"
-#define BUFF_LEN 1024
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -48,7 +47,7 @@ int main(int argc, char *argv[]) {
 
     printf("Server receiving on port %s\n", port);
 
-    char buf[BUFF_LEN];
+    char buf[BUFF_SIZE];
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof (client_addr);
 

@@ -2,6 +2,8 @@
 #define PACKET_H
 
 #define DATA_SIZE 1000
+#define BUFF_SIZE 1024
+#define DELIMITER ":"
 
 typedef struct {
     unsigned int total_frag;
