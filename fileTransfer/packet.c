@@ -10,28 +10,48 @@
 #include <assert.h>
 
 void serializePacket(const Packet *packet, char *result) {
-
     sprintf(result, "%d", packet->total_frag);
-
-    sprintf(result + strlen(result), "%s", DELIMITER);
-
+    sprintf(result + strlen(result), "%c", DELIMITER);
     sprintf(result + strlen(result), "%d", packet->frag_no);
-
-    sprintf(result + strlen(result), "%s", DELIMITER);
-
+    sprintf(result + strlen(result), "%c", DELIMITER);
     sprintf(result + strlen(result), "%d", packet->size);
-
-    sprintf(result + strlen(result), "%s", DELIMITER);
-
+    sprintf(result + strlen(result), "%c", DELIMITER);
     sprintf(result + strlen(result), "%s", packet->filename);
-
-    sprintf(result + strlen(result), "%s", DELIMITER);
-
+    sprintf(result + strlen(result), "%c", DELIMITER);
     memcpy(result + strlen(result), packet -> filedata, DATA_SIZE * sizeof (char));
 }
 
 void deserializePacket(const char* str, Packet *packet) {
-    printf("deserializePacket\n");
+    char temp[BUFF_SIZE] = "";
+    int start_index = 0;
+    int end_index = 0;
+
+    end_index = (int) (strchr(str + start_index, DELIMITER) - str);
+    memcpy(temp, &str[start_index], end_index - start_index);
+    packet->total_frag = atoi(temp);
+    memset(temp, 0, sizeof (temp));
+    start_index = end_index + 1;
+
+    end_index = (int) (strchr(str + start_index, DELIMITER) - str);
+    memcpy(temp, &str[start_index], end_index - start_index);
+    packet->frag_no = atoi(temp);
+    memset(temp, 0, sizeof (temp));
+    start_index = end_index + 1;
+
+    end_index = (int) (strchr(str + start_index, DELIMITER) - str);
+    memcpy(temp, &str[start_index], end_index - start_index);
+    packet->size = atoi(temp);
+    memset(temp, 0, sizeof (temp));
+    start_index = end_index + 1;
+
+    end_index = (int) (strchr(str + start_index, DELIMITER) - str);
+    memcpy(temp, &str[start_index], end_index - start_index);
+    packet->filename = malloc(sizeof (temp));
+    sprintf(packet->filename, "%s", temp);
+    memset(temp, 0, sizeof (temp));
+    start_index = end_index + 1;
+
+    memcpy(packet->filedata, &str[start_index], packet->size);
 }
 
 void packetsToFile(const Packet *packet[], char *pFile) {
