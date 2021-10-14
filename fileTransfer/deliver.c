@@ -88,7 +88,6 @@ int main(int argc, char *argv[]) {
     int i = 0;
     for (i = 0; i < packet_no; ++i) {
         serializePacket((const Packet*) packet[i], serializedPacket);
-        printf("%s\n", serializedPacket);
         sendMsg(sockfd, serializedPacket, server_addr);
         recvMsg(sockfd, server_addr, buf);
         while (strcmp(buf, ACK) != 0) {

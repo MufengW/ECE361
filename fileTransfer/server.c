@@ -72,9 +72,7 @@ int main(int argc, char *argv[]) {
     // recv string
     char serializedPacket[BUFF_SIZE];
     recvMsg(sockfd, client_addr, serializedPacket);
-    printf("%s\n", serializedPacket);
 
-    //recvfrom(... serializedPacket ...) in a loop
     Packet* packet = (Packet*) malloc(sizeof (Packet));
     deserializePacket(serializedPacket, packet);
     int packet_no = packet->total_frag;
@@ -86,9 +84,8 @@ int main(int argc, char *argv[]) {
     sendMsg(sockfd, ACK, client_addr);
     for (int i = 1; i < packet_no; ++i) {
         recvMsg(sockfd, client_addr, serializedPacket);
-        printf("%s\n", serializedPacket);
-        deserializePacket(serializedPacket, packet);
-        p[i] = packet;
+	p[i] = (Packet*)malloc(sizeof(Packet));
+        deserializePacket(serializedPacket, p[i]);
         sendMsg(sockfd, ACK, client_addr);
     }
 
