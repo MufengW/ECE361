@@ -5,6 +5,10 @@
 #define BUFF_SIZE 1024
 #define DELIMITER ':'
 
+#define FTP_STR "ftp"
+#define YES "yes"
+#define NO "no"
+
 typedef struct {
     unsigned int total_frag;
     unsigned int frag_no;
