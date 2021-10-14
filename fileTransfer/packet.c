@@ -55,7 +55,6 @@ void deserializePacket(const char* str, Packet *packet) {
 }
 
 void packetsToFile(const Packet *packet[], char *pFile) {
-    printf("packetToFile\n");
     pFile = packet[0]->filename;
     int fd = creat(pFile, S_IRWXU);
     if (fd < 0) {
@@ -90,7 +89,6 @@ void packetsToFile(const Packet *packet[], char *pFile) {
 }
 
 void fileToPackets(const char *pFile, Packet *packet[]) {
-    printf("fileToPacket\n");
     int fd = open(pFile, O_RDONLY);
     if (fd < 0) {
         printf("open: %s: %s\n", pFile, strerror(errno));

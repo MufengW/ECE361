@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
     char* serializedPacket = NULL;
     int i = 0;
     for (i = 0; i < packet_no; ++i) {
-        serializePacket((const Packet*) packet, serializedPacket);
+        serializePacket((const Packet*) packet[i], serializedPacket);
         // send packet to server
         // wait for ACK
     }
