@@ -7,11 +7,6 @@
 #include <unistd.h>
 #include "packet.h"
 
-#define FTP_STR "ftp"
-#define YES "yes"
-#define NO "no"
-#define BUFF_LEN 1024
-
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Usage: server <UDP listen port>. \n");
@@ -28,7 +23,7 @@ int main(int argc, char *argv[]) {
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
     int rv = getaddrinfo(NULL, port, &hints, &servinfo);
-    if(rv != 0) {
+    if (rv != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
         exit(1);
     }
@@ -48,7 +43,7 @@ int main(int argc, char *argv[]) {
 
     printf("Server receiving on port %s\n", port);
 
-    char buf[BUFF_LEN];
+    char buf[BUFF_SIZE];
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof (client_addr);
 
@@ -65,7 +60,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     } else {
-        if(sendto(sockfd, NO, sizeof (NO), MSG_CONFIRM,
+        if (sendto(sockfd, NO, sizeof (NO), MSG_CONFIRM,
                 (struct sockaddr *) &client_addr, client_len) == -1) {
             perror("server: sendto");
             exit(1);
@@ -80,12 +75,12 @@ int main(int argc, char *argv[]) {
     deserializePacket(serializedPacket, packet);
     int packet_no = packet->total_frag;
     char* pFile = packet->filename;
-    Packet **p = malloc(sizeof(Packet*) * packet_no);
+    Packet **p = malloc(sizeof (Packet*) * packet_no);
     //for loop
     //p[i] = new recieved packet
     //reply ACK
 
     packetsToFile((const Packet**) p, pFile);
-    free_packet(p,packet_no);
+    free_packet(p, packet_no);
     return 0;
 }

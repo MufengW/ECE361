@@ -2,6 +2,12 @@
 #define PACKET_H
 
 #define DATA_SIZE 1000
+#define BUFF_SIZE 1024
+#define DELIMITER ':'
+
+#define FTP_STR "ftp"
+#define YES "yes"
+#define NO "no"
 
 typedef struct {
     unsigned int total_frag;
