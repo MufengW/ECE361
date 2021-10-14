@@ -88,7 +88,23 @@ int main(int argc, char *argv[]) {
 
     if (strcmp(buf, YES) == 0) {
         printf("A file transfer can start.\n");
+    } else {
+	    printf("Did not recieve ACK, abort...\n");
+	    exit(1);
     }
 
+    int file_size = get_file_size((char*)file_name);
+    int packet_no = file_size / DATA_SIZE + 1;
+    Packet** packet = (Packet**)malloc(sizeof(Packet*) * packet_no);
+    fileToPackets(file_name,packet);
+
+    char* serializedPacket = NULL;
+    int i = 0;
+    for(i = 0; i < packet_no; ++i){
+	    serializePacket((const Packet*)packet, serializedPacket);
+	    // send packet to server
+	    // wait for ACK
+    }
+    free_packet(packet, packet_no);
     return 0;
 }

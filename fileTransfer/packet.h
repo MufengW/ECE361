@@ -15,5 +15,8 @@ void serializePacket(const Packet *packet, char *result);
 void deserializePacket(const char* str, Packet *packet);
 void packetsToFile(const Packet *packet[], char *pFile);
 void fileToPackets(const char *pFile, Packet *packet[]);
+void free_packet(Packet *packet[], int packet_no);
+
+int get_file_size(char* file);
 #endif /* PACKET_H */
 

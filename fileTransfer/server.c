@@ -71,5 +71,21 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
+
+
+    // recv string
+    char* serializedPacket = NULL;
+    //recvfrom(... serializedPacket ...) in a loop
+    Packet* packet = NULL;
+    deserializePacket(serializedPacket, packet);
+    int packet_no = packet->total_frag;
+    char* pFile = packet->filename;
+    Packet **p = malloc(sizeof(Packet*) * packet_no);
+    //for loop
+    //p[i] = new recieved packet
+    //reply ACK
+
+    packetsToFile((const Packet**) p, pFile);
+    free_packet(p,packet_no);
     return 0;
 }
