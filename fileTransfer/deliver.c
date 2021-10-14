@@ -11,9 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "packet.h"
-
-void sendMsg();
-void recvACK();
+#include "utils.h"
 
 int main(int argc, char *argv[]) {
     char *address;
@@ -71,48 +69,33 @@ int main(int argc, char *argv[]) {
 
     sendMsg(sockfd, FTP_STR, server_addr);
 
-    recvACK(sockfd, server_addr);
+    char buf[BUFF_SIZE];
+    recvMsg(sockfd, server_addr, buf);
+
+    if (strcmp(buf, YES) == 0) {
+        printf("A file transfer can start.\n");
+    } else {
+        printf("Did not recieve ACK, abort...\n");
+        exit(1);
+    }
 
     int file_size = get_file_size((char*) file_name);
     int packet_no = file_size / DATA_SIZE + 1;
     Packet** packet = (Packet**) malloc(sizeof (Packet*) * packet_no);
     fileToPackets(file_name, packet);
 
-    char serializedPacket[DATA_SIZE];
+    char serializedPacket[BUFF_SIZE];
     int i = 0;
     for (i = 0; i < packet_no; ++i) {
         serializePacket((const Packet*) packet[i], serializedPacket);
-	sendMsg(sockfd, serializedPacket, server_addr);
-	recvACK(sockfd, server_addr);
-	// send packet to server
-        // wait for ACK
+        printf("%s\n", serializedPacket);
+        sendMsg(sockfd, serializedPacket, server_addr);
+        recvMsg(sockfd, server_addr, buf);
+        while (strcmp(buf, ACK) != 0) {
+            printf("Waiting for server to ACK packet %d/%d\n", i, packet_no);
+        }
     }
+    printf("File transfer finished\n");
     free_packet(packet, packet_no);
     return 0;
-}
-
-void sendMsg(int sockfd, const void* msg, struct sockaddr_in server_addr) {
-	socklen_t server_addr_len = sizeof (server_addr);
-	if (sendto(sockfd, msg, BUFF_SIZE, MSG_CONFIRM,
-				(struct sockaddr *) &server_addr, server_addr_len) == -1) {
-		perror("client: sendto");
-		exit(1);
-	}
-}
-
-void recvACK(int sockfd, struct sockaddr_in server_addr) {
-	char buf[BUFF_SIZE];
-	socklen_t server_addr_len = sizeof (server_addr);
-	if (recvfrom(sockfd, (char*) buf, BUFF_SIZE, MSG_WAITALL,
-				(struct sockaddr*) &server_addr, &server_addr_len) == -1) {
-		perror("client: recvfrom");
-		exit(1);
-	}
-	if (strcmp(buf, YES) == 0) {
-		printf("A file transfer can start.\n");
-	} else {
-		printf("Did not recieve ACK, abort...\n");
-		exit(1);
-	}
-
 }

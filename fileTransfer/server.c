@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "packet.h"
+#include "utils.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -69,30 +70,31 @@ int main(int argc, char *argv[]) {
 
 
     // recv string
-    char serializedPacket[DATA_SIZE];
-    if (recvfrom(sockfd, (char*) serializedPacket, sizeof (serializedPacket), MSG_WAITALL,
-            (struct sockaddr *) &client_addr, &client_len) == -1) {
-        perror("recvfrom");
-        exit(1);
-    }
+    char serializedPacket[BUFF_SIZE];
+    recvMsg(sockfd, client_addr, serializedPacket);
+    printf("%s\n", serializedPacket);
+
     //recvfrom(... serializedPacket ...) in a loop
-    Packet* packet = (Packet*)malloc(sizeof(Packet));
+    Packet* packet = (Packet*) malloc(sizeof (Packet));
     deserializePacket(serializedPacket, packet);
     int packet_no = packet->total_frag;
     char* pFile = packet->filename;
-    Packet **p = (Packet**)malloc(sizeof(Packet*) * packet_no);
+    Packet **p = (Packet**) malloc(sizeof (Packet*) * packet_no);
 
+    p[0] = packet;
 
-        if (sendto(sockfd, YES, sizeof (YES), MSG_CONFIRM,
-                (struct sockaddr *) &client_addr, client_len) == -1) {
-            perror("server: sendto");
-            exit(1);
-        }
-    //for loop
-    //p[i] = new recieved packet
-    //reply ACK
+    sendMsg(sockfd, ACK, client_addr);
+    for (int i = 1; i < packet_no; ++i) {
+        recvMsg(sockfd, client_addr, serializedPacket);
+        printf("%s\n", serializedPacket);
+        deserializePacket(serializedPacket, packet);
+        p[i] = packet;
+        sendMsg(sockfd, ACK, client_addr);
+    }
 
     packetsToFile((const Packet**) p, pFile);
+    
+    printf("Finished writing file\n");
     free_packet(p, packet_no);
     return 0;
 }

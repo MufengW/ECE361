@@ -69,7 +69,7 @@ void packetsToFile(const Packet *packet[], char *pFile) {
     memset(buf, 0, DATA_SIZE * sizeof (char));
     for (i = 0; i < packet_no; ++i) {
         Packet *tmp_pkt = (Packet*) packet[i];
-        assert(packet_no == tmp_pkt->frag_no);
+//        assert(packet_no == tmp_pkt->frag_no);
         assert(pFile == tmp_pkt->filename);
         seg_size = tmp_pkt->size;
         memcpy(buf, tmp_pkt->filedata, seg_size);
