@@ -13,7 +13,7 @@ typedef struct {
 
 void serializePacket(const Packet *packet, char *result);
 void deserializePacket(const char* str, Packet *packet);
-void packetsToFile(const Packet *packet[], FILE *pFile);
-void fileToPackets(const FILE *pFile, Packet *packet[]);
+void packetsToFile(const Packet *packet[], char *pFile);
+void fileToPackets(const char *pFile, Packet *packet[]);
 #endif /* PACKET_H */
 
