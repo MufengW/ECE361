@@ -9,35 +9,25 @@
 #include <unistd.h>
 #include <assert.h>
 
-
 void serializePacket(const Packet *packet, char *result) {
-    unsigned long position = 0;
 
-    sprintf(result + position, "%d", packet->total_frag);
-    position = strlen(result);
+    sprintf(result, "%d", packet->total_frag);
 
-    sprintf(result + position, "%s", DELIMITER);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%s", DELIMITER);
 
-    sprintf(result + position, "%d", packet->frag_no);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%d", packet->frag_no);
 
-    sprintf(result + position, "%s", DELIMITER);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%s", DELIMITER);
 
-    sprintf(result + position, "%d", packet->size);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%d", packet->size);
 
-    sprintf(result + position, "%s", DELIMITER);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%s", DELIMITER);
 
-    sprintf(result + position, "%s", packet->filename);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%s", packet->filename);
 
-    sprintf(result + position, "%s", DELIMITER);
-    position = strlen(result);
+    sprintf(result + strlen(result), "%s", DELIMITER);
 
-    memcpy(result + position, packet -> filedata, DATA_SIZE * sizeof (char));
+    memcpy(result + strlen(result), packet -> filedata, DATA_SIZE * sizeof (char));
 }
 
 void deserializePacket(const char* str, Packet *packet) {
