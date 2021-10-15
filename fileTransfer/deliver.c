@@ -1,3 +1,4 @@
+#include <time.h> 
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -67,10 +68,17 @@ int main(int argc, char *argv[]) {
     server_addr.sin_port = htons(port);
     inet_aton(address, &server_addr.sin_addr);
 
+    char buf[BUFF_SIZE];
+    
+    clock_t t;
+    t = clock();
     sendMsg(sockfd, FTP_STR, &server_addr);
 
-    char buf[BUFF_SIZE];
     recvMsg(sockfd, &server_addr, buf);
+
+    t = clock() - t;
+    double time_taken = ((double)t)/CLOCKS_PER_SEC * MILLISEC_PER_SEC;
+    printf("RRT: %f ms.\n",time_taken);
 
     if (strcmp(buf, YES) == 0) {
         printf("A file transfer can start.\n");
