@@ -140,13 +140,3 @@ int get_file_size(char* file) {
     size = st.st_size;
     return size;
 }
-
-//int main(int argc, char** argv){
-//	char *file = argv[1];
-//	int file_size = get_file_size(file);
-//	int packet_no = file_size / DATA_SIZE + 1;
-//	Packet ** p = malloc(sizeof(Packet * ) * packet_no);
-//	fileToPackets(file,p);
-//	packetsToFile((const Packet**)p,file);
-//	return 0;    
-//}

@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
     sendMsg(sockfd, ACK, &client_addr);
     for (int i = 1; i < packet_no; ++i) {
         recvMsg(sockfd, &client_addr, serializedPacket);
-	p[i] = (Packet*)malloc(sizeof(Packet));
+        p[i] = (Packet*)malloc(sizeof(Packet));
         deserializePacket(serializedPacket, p[i]);
         sendMsg(sockfd, ACK, &client_addr);
     }
