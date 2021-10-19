@@ -1,17 +1,3 @@
-#include <time.h> 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h> 
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include "packet.h"
 #include "utils.h"
 
 int main(int argc, char *argv[]) {
@@ -69,7 +55,7 @@ int main(int argc, char *argv[]) {
     inet_aton(address, &server_addr.sin_addr);
 
     char buf[BUFF_SIZE];
-    
+
     clock_t t;
     t = clock();
     sendMsg(sockfd, FTP_STR, &server_addr);

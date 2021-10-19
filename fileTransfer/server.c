@@ -1,11 +1,3 @@
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include "packet.h"
 #include "utils.h"
 
 int main(int argc, char *argv[]) {
@@ -73,9 +65,13 @@ int main(int argc, char *argv[]) {
     sendMsg(sockfd, ACK, &client_addr);
     for (int i = 1; i < packet_no; ++i) {
         recvMsg(sockfd, &client_addr, serializedPacket);
-        p[i] = (Packet*)malloc(sizeof(Packet));
-        deserializePacket(serializedPacket, p[i]);
-        sendMsg(sockfd, ACK, &client_addr);
+        if(uniform_rand() > 1e-2) {
+            p[i] = (Packet*)malloc(sizeof(Packet));
+            deserializePacket(serializedPacket, p[i]);
+            sendMsg(sockfd, ACK, &client_addr);
+        } else {
+            printf("%d: packed dropped!\n",i);
+        }
     }
 
     packetsToFile((const Packet**) p, pFile);

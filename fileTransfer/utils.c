@@ -1,16 +1,6 @@
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h> 
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include "packet.h"
+#include "utils.h"
+
+bool rand_seed_gen = false;
 
 void sendMsg(int sockfd, const void* msg, struct sockaddr_in *addr) {
     socklen_t addr_len = sizeof (*addr);
@@ -29,4 +19,12 @@ void recvMsg(int sockfd, struct sockaddr_in *addr, char* buf) {
         exit(1);
     }
 
+}
+
+double uniform_rand() {
+    if(!rand_seed_gen) {
+        rand_seed_gen = true;
+        srand((unsigned)time(NULL));
+    }
+    return((double)rand() / (double)RAND_MAX);
 }
