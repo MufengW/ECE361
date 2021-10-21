@@ -17,7 +17,7 @@
 #include "packet.h"
 
 void sendMsg();
-void recvMsg();
+bool recvMsg();
 
 double uniform_rand();
 

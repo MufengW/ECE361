@@ -49,6 +49,13 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    struct timeval tv;
+    tv.tv_sec = TIMEOUT_SEC;
+    tv.tv_usec = TIMEOUT_MICROSEC;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+            perror("Error");
+    }
+
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
@@ -80,15 +87,19 @@ int main(int argc, char *argv[]) {
 
     char serializedPacket[BUFF_SIZE];
     int i = 0;
-    for (i = 0; i < packet_no; ++i) {
+    while (i < packet_no) {
         serializePacket((const Packet*) packet[i], serializedPacket);
         sendMsg(sockfd, serializedPacket, &server_addr);
-        recvMsg(sockfd, &server_addr, buf);
-        while (strcmp(buf, ACK) != 0) {
-            printf("Waiting for server to ACK packet %d/%d\n", i, packet_no);
-        }
+        while(!recvMsg(sockfd, &server_addr, buf)) {
+        printf("Resending packet %d/%d...\n\n", i, packet_no);
+        sendMsg(sockfd, serializedPacket, &server_addr);
     }
-    printf("File transfer finished\n");
+        if (atoi(buf) == i+1) {
+            //got ACK, continue to send the next packet.
+            ++i;
+        } //else, packet may gone missing, go back to while loop and send it again.
+    }
+    printf("File transfer finished!\n");
     free_packet(packet, packet_no);
     return 0;
 }

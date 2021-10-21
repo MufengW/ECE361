@@ -60,17 +60,26 @@ int main(int argc, char *argv[]) {
     char* pFile = packet->filename;
     Packet **p = (Packet**) malloc(sizeof (Packet*) * packet_no);
 
+    char segNum[SEGNUM_SIZE]; // segNum stores the next packet num in string, sent back to client as ACK
     p[0] = packet;
 
-    sendMsg(sockfd, ACK, &client_addr);
-    for (int i = 1; i < packet_no; ++i) {
+    int i = p[0]->frag_no; // i is the currently recieving packet num
+    sprintf(segNum, "%d", i+1);
+    sendMsg(sockfd, segNum, &client_addr);
+
+    while (i+1 != packet_no) {
         recvMsg(sockfd, &client_addr, serializedPacket);
-        if(uniform_rand() > 1e-2) {
-            p[i] = (Packet*)malloc(sizeof(Packet));
-            deserializePacket(serializedPacket, p[i]);
-            sendMsg(sockfd, ACK, &client_addr);
-        } else {
-            printf("%d: packed dropped!\n",i);
+        if(uniform_rand() > 1e-2) { // 99% not drop
+            Packet* tmp_packet = (Packet*)malloc(sizeof(Packet));
+            deserializePacket(serializedPacket, tmp_packet);
+            i = tmp_packet->frag_no; //update i to current packet frag_no
+            p[i] = tmp_packet;
+
+            //ready to recv next packet
+            sprintf(segNum, "%d", i+1);
+            sendMsg(sockfd, segNum, &client_addr);
+        } else { // 1% drop
+            printf("Packet %d dropped!\n",i);
         }
     }
 

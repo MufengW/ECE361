@@ -11,13 +11,19 @@ void sendMsg(int sockfd, const void* msg, struct sockaddr_in *addr) {
     }
 }
 
-void recvMsg(int sockfd, struct sockaddr_in *addr, char* buf) {
+bool recvMsg(int sockfd, struct sockaddr_in *addr, char* buf) {
     socklen_t addr_len = sizeof (*addr);
     if (recvfrom(sockfd, (char*) buf, BUFF_SIZE, MSG_WAITALL,
             (struct sockaddr*) addr, &addr_len) == -1) {
-        perror("recvfrom");
-        exit(1);
+        if(errno == EWOULDBLOCK) {
+            printf("ACK recving timeout!\n");
+            return false;
+        } else {
+            perror("recvfrom");
+            exit(1);
+        }
     }
+    return true;
 
 }
 

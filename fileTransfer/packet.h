@@ -3,6 +3,9 @@
 
 #define DATA_SIZE 10
 #define BUFF_SIZE 2048
+#define SEGNUM_SIZE 4
+#define TIMEOUT_SEC 0
+#define TIMEOUT_MICROSEC 10000
 #define DELIMITER ':'
 
 #define FTP_STR "ftp"
