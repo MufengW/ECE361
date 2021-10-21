@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
             sprintf(segNum, "%d", i+1);
             sendMsg(sockfd, segNum, &client_addr);
         } else { // 1% drop
-            printf("Packet %d dropped!\n",i);
+            printf("Packet %d dropped!\n",i+1);
         }
     }
 

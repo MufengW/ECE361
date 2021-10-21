@@ -90,14 +90,13 @@ int main(int argc, char *argv[]) {
     while (i < packet_no) {
         serializePacket((const Packet*) packet[i], serializedPacket);
         sendMsg(sockfd, serializedPacket, &server_addr);
-        while(!recvMsg(sockfd, &server_addr, buf)) {
-        printf("Resending packet %d/%d...\n\n", i, packet_no);
-        sendMsg(sockfd, serializedPacket, &server_addr);
-    }
-        if (atoi(buf) == i+1) {
-            //got ACK, continue to send the next packet.
-            ++i;
-        } //else, packet may gone missing, go back to while loop and send it again.
+        do{
+            while(!recvMsg(sockfd, &server_addr, buf)) {
+                printf("Resending packet %d/%d...\n\n", i, packet_no);
+                sendMsg(sockfd, serializedPacket, &server_addr);
+            }
+        } while(i >= atoi(buf));
+        i = atoi(buf);
     }
     printf("File transfer finished!\n");
     free_packet(packet, packet_no);
