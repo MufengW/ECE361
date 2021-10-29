@@ -71,12 +71,12 @@ int main(int argc, char *argv[]) {
 
     t = clock() - t;
     double time_taken = ((double)t)/CLOCKS_PER_SEC * MILLISEC_PER_SEC;
-    printf("RRT: %f ms.\n",time_taken);
+    printf("RTT: %f ms.\n",time_taken);
 
     if (strcmp(buf, YES) == 0) {
         printf("A file transfer can start.\n");
     } else {
-        printf("Did not recieve ACK, abort...\n");
+        printf("Did not receive ACK, abort...\n");
         exit(1);
     }
 
