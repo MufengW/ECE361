@@ -21,6 +21,7 @@
 
 #define ereport(emessage) do {                                \
     fprintf(stderr,"%s:%d:\t%s:%s\n", __FILE__, __LINE__, __FUNCTION__, emessage);    \
+    exit(1);                        \
 } while(0)
 
 #define MAX_NAME 256

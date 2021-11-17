@@ -1,12 +1,18 @@
 #include "utils.h"
 
+bool login = false;
+char *current_client = "";
+int sockfd;
+
 void get_input(char *buf);
+void detect_extra_input();
 static void process_msg(struct message *msg, char *buf);
 enum type get_type(char *first_word);
 void get_and_process_prompt(struct message *msg);
 void connect_to_server(char *server_ip, char *server_port, int *sockfd);
 
-void do_login(struct message *msg);
+static void do_login(struct message *msg);
+static void do_logout(struct message *msg);
 
 int main() {
     bool exit = false;
@@ -18,21 +24,25 @@ int main() {
 }
 
 void get_input(char *buf) {
-    printf("Input your prompt below:\n");
+    if(!login) {
+        printf("\nInput your prompt below:\n\n>> ");
+    } else {
+        printf("\n%s:\n>> ", current_client);
+    }
     fgets(buf, MAX_DATA, stdin);
 }
 
 static void process_msg(struct message *msg, char *buf) {
     char *data = strdup(buf); // make a copy of original data to avoid overwrite
     if(strlen(data) == 0) {
-        printf("data empty, try input again!\n");
+        printf("\ndata empty, try input again!\n");
         get_and_process_prompt(msg);
         return;
     }
     char delim[] = " \n\t\v\f\r";
     char *first_word = strtok(data, delim);
     if(first_word == NULL) {
-        printf("data empty, try input again!\n");
+        printf("\ndata empty, try input again!\n");
         get_and_process_prompt(msg);
         return;
     }
@@ -43,6 +53,7 @@ static void process_msg(struct message *msg, char *buf) {
             break;
         }
         case EXIT: {
+            do_logout(msg);
             break;
         }
         case JOIN: {
@@ -108,11 +119,16 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
         exit(1);
     }
     inet_ntop(servinfo->ai_family, get_in_addr((struct sockaddr *)servinfo->ai_addr), s, sizeof(s));
-    printf("client: connecting to %s\n", s);
+    //printf("client: connecting to %s\n", s);
     freeaddrinfo(servinfo);
 }
 
-void do_login(struct message *msg) {
+static void do_login(struct message *msg) {
+    if(login) {
+        printf("\nyou have already logged in to %s on this machine!\n", current_client);
+        get_and_process_prompt(msg);
+        return;
+    }
     char delim[] = " \n\t\v\f\r";
     char *client_id = strtok(NULL, delim);
     char *password = strtok(NULL, delim);
@@ -123,12 +139,9 @@ void do_login(struct message *msg) {
         get_and_process_prompt(msg);
         return;
     }
-    char *extra_input = strtok(NULL, delim);
-    if(extra_input) {
-        printf("extra input detected and ignored...\n");
-    }
 
-    int sockfd;
+    detect_extra_input();
+
     connect_to_server(server_ip, server_port, &sockfd);
 
     // message data is the password
@@ -142,18 +155,48 @@ void do_login(struct message *msg) {
 
     switch(msg->msg_type) {
         case LO_ACK: {
-        printf("login successful!\n");
-        return;
-    }
-    case LO_NAK: {
+            printf("\nlogin successful!\n");
+            login = true;
+            current_client = (char *)msg->source;
+            return;
+        }
+        case LO_NAK: {
             printf("%s", msg->data);
-        break;
-    }
-    default: {
-        break;
-     }
+            break;
+        }
+        default: {
+            ereport("unkown message type!");
+            break;
+         }
     }
     get_and_process_prompt(msg);
 
     //close(sockfd);
+}
+
+static void do_logout(struct message *msg) {
+    if(!login) {
+        printf("\nyou have not logged in to any account\n\n");
+        get_and_process_prompt(msg);
+        return;
+    }
+    detect_extra_input();
+
+    memcpy(msg->source, current_client, strlen(current_client));
+    send_message(msg, sockfd);
+    if(close(sockfd) < 0) {
+        perror("close");
+        exit(1);
+    }
+    printf("\naccount %s have successfully logged out!\n\n", current_client);
+    current_client = "";
+    login = false;
+}
+
+void detect_extra_input() {
+    char delim[] = " \n\t\v\f\r";
+    char *extra_input = strtok(NULL, delim);
+    if(extra_input) {
+        printf("\nextra input dected and ignored...\n\n");
+    }
 }

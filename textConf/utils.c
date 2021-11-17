@@ -96,14 +96,14 @@ int accept_message(struct message *msg, int sockfd) {
     char buf[MAX_DATA];
     memset(buf, 0, MAX_DATA);
     struct sockaddr_storage their_addr;
-        socklen_t sin_size = sizeof(their_addr);
-        int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
-        if(new_fd == -1) {
-            perror("accept");
-            exit(1);
-        }
-        inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof(s));
-        printf("got connection from %s\n", s);
+    socklen_t sin_size = sizeof(their_addr);
+    int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
+    if(new_fd == -1) {
+        perror("accept");
+        exit(1);
+    }
+    inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof(s));
+    //printf("got connection from %s\n", s);
     return new_fd;
 }
 
@@ -119,9 +119,9 @@ void send_message(struct message *msg, int sockfd) {
 
 void recv_message(struct message *msg, int sockfd) {
     char buf[sizeof(struct message) + sizeof(int) * 2];
-        if(recv(sockfd, buf, MAX_DATA, 0) == -1) {
-            perror("recv");
-            exit(1);
-        }
-        deserialize(msg, buf);
+    if(recv(sockfd, buf, MAX_DATA, 0) == -1) {
+        perror("recv");
+        exit(1);
+    }
+    deserialize(msg, buf);
 }
