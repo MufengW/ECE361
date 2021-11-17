@@ -22,8 +22,13 @@
 #define ereport(emessage) do {                                \
     fprintf(stderr,"%s:%d:\t%s:%s\n", __FILE__, __LINE__, __FUNCTION__, emessage);    \
 } while(0)
+
 #define MAX_NAME 256
 #define MAX_DATA 2048
+
+#define DELIMITER ':'
+#define BACKLOG 10
+#define MAX_ONLINE 20
 
 enum type {
     LOGIN,
@@ -51,10 +56,12 @@ struct message {
     unsigned char data[MAX_DATA];
 };
 
+void start_listen(char *port, int *sockfd);
+int accept_message(struct message *msg, int sockfd);
 void *get_in_addr(struct sockaddr *sa);
-void serialize(struct message *msg, char *serialized_data);
-void deserialize(struct message *result, char *str);
-void send_message(int sockfd, char *serialized_data);
-void recv_message(int sockfd, char *buf);
+void serialize(struct message *msg, char *buf);
+void deserialize(struct message *result, char *buf);
+void send_message(struct message *msg, int sockfd);
+void recv_message(struct message *msg, int sockfd);
 
 #endif /* UTILS_H */

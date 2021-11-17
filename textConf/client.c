@@ -1,10 +1,12 @@
 #include "utils.h"
 
 void get_input(char *buf);
-void process_msg(struct message *msg, char *buf);
+static void process_msg(struct message *msg, char *buf);
 enum type get_type(char *first_word);
 void get_and_process_prompt(struct message *msg);
 void connect_to_server(char *server_ip, char *server_port, int *sockfd);
+
+void do_login(struct message *msg);
 
 int main() {
     bool exit = false;
@@ -20,46 +22,24 @@ void get_input(char *buf) {
     fgets(buf, MAX_DATA, stdin);
 }
 
-void process_msg(struct message *msg, char *buf) {
+static void process_msg(struct message *msg, char *buf) {
     char *data = strdup(buf); // make a copy of original data to avoid overwrite
     if(strlen(data) == 0) {
-        printf("data empty, try input again!");
+        printf("data empty, try input again!\n");
         get_and_process_prompt(msg);
         return;
     }
     char delim[] = " \n\t\v\f\r";
     char *first_word = strtok(data, delim);
+    if(first_word == NULL) {
+        printf("data empty, try input again!\n");
+        get_and_process_prompt(msg);
+        return;
+    }
     msg->msg_type = get_type(first_word);
     switch (msg->msg_type) {
         case LOGIN: {
-            char *client_id = strtok(NULL, delim);
-            char *password = strtok(NULL, delim);
-            char *server_ip = strtok(NULL, delim);
-            char *server_port = strtok(NULL, delim);
-            if(server_port == NULL) {
-                printf("\nlogin format error, please login with command:\n/login <client ID> <password> <server-IP> <server-port>\n\n");
-                get_and_process_prompt(msg);
-                return;
-            }
-            char *extra_input = strtok(NULL, delim);
-            if(extra_input) {
-                printf("extra input detected and ignored...\n");
-            }
-
-            int sockfd;
-            connect_to_server(server_ip, server_port, &sockfd);
-
-            // message data is the password
-            memcpy(msg->data, password, strlen(password));
-            msg->size = strlen((const char *)msg->data);
-            memcpy(msg->source, client_id, strlen(client_id));
-            char serialized_data[sizeof(struct message) + sizeof(int) * 2];
-            memset(serialized_data, 0, sizeof(serialized_data));
-            serialize(msg, serialized_data);
-            send_message(sockfd, serialized_data);
-            close(sockfd);
-
-            printf("passwd: %s\nclient_id: %s\n", password, client_id);
+            do_login(msg);
             break;
         }
         case EXIT: {
@@ -130,4 +110,50 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
     inet_ntop(servinfo->ai_family, get_in_addr((struct sockaddr *)servinfo->ai_addr), s, sizeof(s));
     printf("client: connecting to %s\n", s);
     freeaddrinfo(servinfo);
+}
+
+void do_login(struct message *msg) {
+    char delim[] = " \n\t\v\f\r";
+    char *client_id = strtok(NULL, delim);
+    char *password = strtok(NULL, delim);
+    char *server_ip = strtok(NULL, delim);
+    char *server_port = strtok(NULL, delim);
+    if(server_port == NULL) {
+        printf("\nlogin format error, please login with command:\n/login <client ID> <password> <server-IP> <server-port>\n\n");
+        get_and_process_prompt(msg);
+        return;
+    }
+    char *extra_input = strtok(NULL, delim);
+    if(extra_input) {
+        printf("extra input detected and ignored...\n");
+    }
+
+    int sockfd;
+    connect_to_server(server_ip, server_port, &sockfd);
+
+    // message data is the password
+    memcpy(msg->data, password, strlen(password));
+    msg->size = strlen((const char *)msg->data);
+    memcpy(msg->source, client_id, strlen(client_id));
+
+    send_message(msg, sockfd);
+
+    recv_message(msg, sockfd);
+
+    switch(msg->msg_type) {
+        case LO_ACK: {
+        printf("login successful!\n");
+        return;
+    }
+    case LO_NAK: {
+            printf("%s", msg->data);
+        break;
+    }
+    default: {
+        break;
+     }
+    }
+    get_and_process_prompt(msg);
+
+    //close(sockfd);
 }

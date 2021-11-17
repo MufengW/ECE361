@@ -1,7 +1,22 @@
 #include "utils.h"
-#define BACKLOG 10
 
-void start_connection(char *port, int *sockfd);
+enum account_stat {
+    VALID,
+    ACCOUNT_NOT_EXIST,
+    WRONG_PASSWORD,
+    NO_MORE_SPACE
+};
+
+const char *account_not_exist = "the account does not exist!\n";
+const char *wrong_password = "wrong password!\n";
+const char *no_more_space = "to many users online, need to wait for someone logout!\n";
+
+char *online_client[MAX_ONLINE];
+int online_count = 0;
+
+static void process_message(struct message *msg, int sockfd);
+static void do_login(struct message *msg, int sockfd);
+static enum account_stat check_account(char *client_id, char *password);
 
 int main(int argc, char *argv[]) {
     struct sockaddr_storage; // connector's address information
@@ -12,46 +27,85 @@ int main(int argc, char *argv[]) {
     }
     char *port = argv[1];
 
-    int sockfd;
-    start_connection(port, &sockfd);
+    int listen_sockfd;
+    start_listen(port, &listen_sockfd);
 
-    char buf[MAX_DATA];
     while(1) {
-        recv_message(sockfd, buf);
+        struct message *msg = (struct message*)malloc(sizeof(struct message));
+
+        int recv_sockfd = accept_message(msg, listen_sockfd);
+    recv_message(msg, recv_sockfd);
+        process_message(msg, recv_sockfd);
+    free(msg);
     }
     return 0;
 }
 
-void start_connection(char *port, int *sockfd) {
-    struct addrinfo hints, *servinfo;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-    int rv = getaddrinfo(NULL, port, &hints, &servinfo);
-    if(rv != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+static void process_message(struct message *msg, int sockfd) {
+    switch (msg->msg_type) {
+        case LOGIN: {
+            do_login(msg, sockfd);
+            break;
+        }
+        case EXIT: {
+            break;
+        }
+        case JOIN: {
+            break;
+        }
+        case LEAVE_SESS: {
+            break;
+        }
+        case QUERY: {
+            break;
+        }
+        case QUIT: {
+            break;
+        }
+        case MESSAGE: {
+            break;
+        }
+        default: {
+            break;
+        }
+        return;
     }
+}
 
-    *sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
-    if(*sockfd == -1) {
-        perror("server: socket");
-        exit(1);
+static void do_login(struct message *msg, int sockfd) {
+    char *client_id = (char *)msg->source;
+    char *password = (char *)msg->data;
+    enum account_stat stat = check_account(client_id, password);
+    switch(stat) {
+        case VALID: {
+            msg->msg_type = LO_ACK;
+        online_client[online_count] = strdup(client_id);
+        ++online_count;
+            break;
+        }
+        case ACCOUNT_NOT_EXIST: {
+            msg->msg_type = LO_NAK;
+        memcpy(msg->data, account_not_exist, strlen(account_not_exist));
+            break;
+        }
+        case WRONG_PASSWORD: {
+            msg->msg_type = LO_NAK;
+        memcpy(msg->data, wrong_password, strlen(wrong_password));
+            break;
+        }
+    case NO_MORE_SPACE: {
+            msg->msg_type = LO_NAK;
+        memcpy(msg->data, no_more_space, strlen(no_more_space));
+        break;
     }
-    if(bind(*sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
-        close(*sockfd);
-        perror("server: bind");
-        exit(1);
+        default: {
+            break;
+        }
     }
-    freeaddrinfo(servinfo);
+    send_message(msg, sockfd);
+}
 
-    printf("server reciving on port %s\n", port);
-
-    if(listen(*sockfd, BACKLOG) == -1) {
-        perror("listen");
-        exit(1);
-    }
-
-    printf("server: waiting for connections...\n");
+static enum account_stat check_account(char *client_id, char *password) {
+    if(online_count + 1 == MAX_ONLINE) return NO_MORE_SPACE;
+    return VALID;
 }
