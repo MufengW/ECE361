@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,7 @@
 #define DELIMITER ':'
 #define BACKLOG 10
 #define MAX_ONLINE 20
+#define MAX_SESSION 20
 
 enum type {
     LOGIN,
@@ -42,6 +44,7 @@ enum type {
     LEAVE_SESS,
     NEW_SESS,
     NS_ACK,
+    NS_NAK,
     MESSAGE,
     QUERY,
     QU_ACK,
