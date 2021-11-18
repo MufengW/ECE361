@@ -1,23 +1,4 @@
-#include "utils.h"
-
-bool login = false;
-char *current_client = "";
-char *current_session = "";
-int sockfd;
-
-void get_input(char *buf);
-void detect_extra_input();
-static void process_msg(struct message *msg, char *buf);
-enum type get_type(char *first_word);
-void get_and_process_prompt(struct message *msg);
-void connect_to_server(char *server_ip, char *server_port, int *sockfd);
-
-static void do_login(struct message *msg);
-static void do_logout(struct message *msg);
-static void do_newsession(struct message *msg);
-static void do_joinsession(struct message *msg);
-static void do_leavesession(struct message *msg);
-static void do_query(struct message *msg);
+#include "client.h"
 
 int main() {
     bool exit = false;
@@ -32,7 +13,7 @@ void get_input(char *buf) {
     if(!login) {
         printf("\nInput your prompt below:\n\n>> ");
     } else {
-        printf("\n%s:\n>> ", current_client);
+        printf("\n\n%s:$ ", current_client);
     }
     fgets(buf, MAX_DATA, stdin);
 }
