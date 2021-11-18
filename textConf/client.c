@@ -17,6 +17,8 @@ static void do_login(struct message *msg);
 static void do_logout(struct message *msg);
 static void do_newsession(struct message *msg);
 
+void set_str_val(char *src, char *dst);
+
 int main() {
     bool exit = false;
     struct message *msg = (struct message *)malloc(sizeof(struct message));
@@ -153,12 +155,13 @@ static void do_login(struct message *msg) {
     connect_to_server(server_ip, server_port, &sockfd);
 
     // message data is the password
-    memset(msg->data, 0, MAX_DATA);
-    memcpy(msg->data, password, strlen(password));
+    //memset(msg->data, 0, MAX_DATA);
+    //msg->data = &password;
+    set_str_val((char *)msg->data, password);
     msg->size = strlen((const char *)msg->data);
-    memset(msg->source, 0, MAX_NAME);
-    memcpy(msg->source, client_id, strlen(client_id));
-
+    //memset(msg->source, 0, MAX_NAME);
+    //strncpy((char *)msg->source, client_id, strlen(client_id));
+    set_str_val((char *)msg->source, client_id);
     send_message(msg, sockfd);
     recv_message(msg, sockfd);
 
@@ -191,8 +194,9 @@ static void do_logout(struct message *msg) {
     }
     detect_extra_input();
 
-    memset(msg->source, 0, MAX_NAME);
-    memcpy(msg->source, current_client, strlen(current_client));
+    //memset(msg->source, 0, MAX_NAME);
+    //strncpy((char *)msg->source, current_client, strlen(current_client));
+    set_str_val((char *)msg->source, current_client);
     send_message(msg, sockfd);
     if(close(sockfd) < 0) {
         perror("close");
@@ -219,11 +223,13 @@ static void do_newsession(struct message *msg) {
 
     detect_extra_input();
 
-    memset(msg->source, 0, MAX_NAME);
-    memcpy(msg->source, current_client, strlen(current_client));
+    //memset(msg->source, 0, MAX_NAME);
+    //strncpy((char *)msg->source, current_client, strlen(current_client));
+    set_str_val((char *)msg->source, current_client);
 
-    memset(msg->data, 0, MAX_DATA);
-    memcpy(msg->data, session_id, strlen(session_id));
+    //memset(msg->data, 0, MAX_DATA);
+    //strncpy((char *)msg->data, session_id, strlen(session_id));
+    set_str_val((char *)msg->data, session_id);
 
     send_message(msg, sockfd);
     recv_message(msg, sockfd);
@@ -254,4 +260,10 @@ void detect_extra_input() {
     if(extra_input) {
         printf("\nextra input dected and ignored...\n\n");
     }
+}
+
+void set_str_val(char* src, char *dst) {
+    char *tmp = strdup(dst);
+    memset(src, 0, strlen(src));
+    memcpy(src, tmp, strlen(tmp));
 }

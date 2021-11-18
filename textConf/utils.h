@@ -61,7 +61,7 @@ struct message {
 };
 
 void start_listen(char *port, int *sockfd);
-int accept_message(struct message *msg, int sockfd);
+int accept_conn(int sockfd);
 void *get_in_addr(struct sockaddr *sa);
 void serialize(struct message *msg, char *buf);
 void deserialize(struct message *result, char *buf);

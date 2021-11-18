@@ -90,7 +90,7 @@ void deserialize(struct message *result, char *str) {
     memcpy(result->data, &str[start_index + source_len], data_len);
 }
 
-int accept_message(struct message *msg, int sockfd) {
+int accept_conn(int sockfd) {
     char s[INET_ADDRSTRLEN];
 
     char buf[MAX_DATA];

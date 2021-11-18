@@ -58,30 +58,22 @@ int main(int argc, char *argv[]) {
     int listen_sockfd;
     start_listen(port, &listen_sockfd);
 
-    do {
+    while(1) {
+        int recv_sockfd = accept_conn(listen_sockfd);
         pthread_t *new_thread = (pthread_t *)malloc(sizeof(pthread_t));
-        pthread_create(new_thread, NULL, (void *)&recv_main_loop, &listen_sockfd);
-        ++thread_count;
+        pthread_create(new_thread, NULL, (void *)&recv_main_loop, &recv_sockfd);
+    }
 
-    } while(thread_count < MAX_ONLINE);
-
-/*    while(1) {
-        recv_main_loop(listen_sockfd);
-    }*/
     return 0;
 }
 
-void recv_main_loop(int *listen_sockfd) {
-    pthread_mutex_lock(&lock);
+void recv_main_loop(int *recv_sockfd) {
     struct message *msg = (struct message *)malloc(sizeof(struct message));
-
-    int recv_sockfd = accept_message(msg, *listen_sockfd);
-    pthread_mutex_unlock(&lock);
 
     bool exit = false;
     while(!exit) {
-        recv_message(msg, recv_sockfd);
-        exit = process_message(msg, recv_sockfd);
+        recv_message(msg, *recv_sockfd);
+        exit = process_message(msg, *recv_sockfd);
     }
     free(msg);
     pthread_mutex_lock(&lock);
@@ -220,7 +212,7 @@ void remove_account(char *client_id) {
         ereport("client to remove not found!");
     }
     online_client[idx] = "";
-    printf("\nclient %s removed\n\n", client_id);
+    //printf("\nclient %s removed\n\n", client_id);
     --online_count;
 }
 
@@ -237,8 +229,6 @@ int find_client(char *client_id) {
 int find_session(char *session_id) {
     for(int i = 0; i < MAX_SESSION; ++i) {
         char *temp_id = session[i];
-    if(temp_id == NULL) printf("null\n"); else printf("%s\n", temp_id);
-    printf("%s\n\n",session_id);
         if(temp_id != NULL && strcmp(session_id, temp_id) == 0) {
             return i;
         }
@@ -249,9 +239,8 @@ int find_session(char *session_id) {
 void add_session(char *session_id) {
     for(int i = 0; i < MAX_SESSION; ++i) {
         if(session[i] == NULL) {
-            online_client[i] = strdup(session_id);
+            session[i] = strdup(session_id);
             ++session_count;
-        printf("session added, %d\n", i);
             return;
         }
     }
