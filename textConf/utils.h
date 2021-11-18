@@ -30,7 +30,7 @@
 
 #define DELIMITER ':'
 #define BACKLOG 10
-#define MAX_ONLINE 20
+#define MAX_ACCOUNT 20
 #define MAX_SESSION 20
 
 enum type {
@@ -67,5 +67,5 @@ void serialize(struct message *msg, char *buf);
 void deserialize(struct message *result, char *buf);
 void send_message(struct message *msg, int sockfd);
 void recv_message(struct message *msg, int sockfd);
-
+void set_str_val(char* src, char *dst);
 #endif /* UTILS_H */

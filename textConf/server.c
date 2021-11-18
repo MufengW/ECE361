@@ -4,38 +4,46 @@ enum account_stat {
     ACCOUNT_VALID,
     ACCOUNT_NOT_EXIST,
     WRONG_PASSWORD,
-    ALREADY_ONLINE,
+    ALREADY_LOGIN,
     NO_MORE_ACCOUNT
 };
 
 enum session_stat {
-    SESSION_VALID,
+    SESSION_NOT_EXIST,
     SESSION_EXISTS,
     NO_MORE_SESSION
 };
 
 const char *account_not_exist = "\nthis account does not exist!\n\n";
 const char *wrong_password = "\nwrong password!\n\n";
-const char *already_online = "\nthis account has alreay logged in on another machine!\n\n";
+const char *already_login = "\nthis account has alreay logged in on another machine!\n\n";
 const char *no_more_account = "\ntoo many users online, need to wait for someone to logout!\n\n";
 
 
-const char *session_exists = "\n this session name already exists!\n\n";
-const char *no_more_session = "\n too many active sessions, need to wait for some sessions to close!\n\n";
+const char *session_exists = "\nthis session name already exists!\n\n";
+const char *session_not_exist = "\nthis session does not exist!\n\n";
+const char *no_more_session = "\ntoo many active sessions, need to wait for some sessions to close!\n\n";
+const char *client_already_in_session = "\nclient is already in this session!\n\n";
 
-char *online_client[MAX_ONLINE];
+char *all_client[MAX_ACCOUNT];
+bool login_client[MAX_ACCOUNT];
+
 char *session[MAX_SESSION];
+bool session_client_map[MAX_SESSION + 1][MAX_ACCOUNT];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int thread_count = 0;
-int online_count = 0;
+int total_account = 0;
 int session_count = 0;
 
+static void init_global();
 void recv_main_loop(int *listen_sockfd);
 static bool process_message(struct message *msg, int sockfd);
 
 static void do_login(struct message *msg, int sockfd);
 static void do_logout(struct message *msg, int sockfd);
 static void do_newsession(struct message *msg, int sockfd);
+static void do_joinsession(struct message *msg, int sockfd);
+static void do_leavesession(struct message *msg, int sockfd);
 
 void add_account(char *client_id);
 void remove_account(char *client_id);
@@ -44,17 +52,19 @@ static enum account_stat check_account(char *client_id, char *password);
 
 int find_session(char *session_id);
 void add_session(char *session_id);
+void client_join_session(char *client_id, char *session_id);
 static enum session_stat check_session(char *session_id);
 
-int main(int argc, char *argv[]) {
-    struct sockaddr_storage; // connector's address information
+void client_join_session(char *client_id, char *session_id);
 
+int main(int argc, char *argv[]) {
     if(argc != 2) {
         printf("\nusage: server <TCP port number to listen on>\n\n");
         exit(1);
     }
     char *port = argv[1];
 
+    init_global();
     int listen_sockfd;
     start_listen(port, &listen_sockfd);
 
@@ -72,16 +82,32 @@ void recv_main_loop(int *recv_sockfd) {
 
     bool exit = false;
     while(!exit) {
-        recv_message(msg, *recv_sockfd);
+        memset(msg, 0, sizeof(*msg));
+        //pthread_mutex_lock(&lock);
         exit = process_message(msg, *recv_sockfd);
+        //pthread_mutex_unlock(&lock);
     }
     free(msg);
-    pthread_mutex_lock(&lock);
-    --thread_count;
-    pthread_mutex_unlock(&lock);
+}
+
+static void init_global() {
+    int i, j;
+    for(i = 0; i < MAX_SESSION; ++i) {
+        session[i] = NULL;
+    }
+    for(j = 0; j < MAX_ACCOUNT; ++j) {
+        all_client[j] = NULL;
+    login_client[i] = false;
+    }
+    for(i = 0; i < MAX_SESSION + 1; ++i) {
+        for(j = 0; j < MAX_ACCOUNT; ++j) {
+            session_client_map[i][j] = false;
+        }
+    }
 }
 
 static bool process_message(struct message *msg, int sockfd) {
+    recv_message(msg, sockfd);
     switch (msg->msg_type) {
         case LOGIN: {
             do_login(msg, sockfd);
@@ -89,17 +115,19 @@ static bool process_message(struct message *msg, int sockfd) {
         }
         case EXIT: {
             do_logout(msg, sockfd);
-        return true;
+            return true;
         }
         case JOIN: {
+            do_joinsession(msg, sockfd);
             break;
         }
         case LEAVE_SESS: {
+            do_leavesession(msg, sockfd);
             break;
         }
         case NEW_SESS: {
             do_newsession(msg, sockfd);
-            break;
+            return false;
         }
         case QUERY: {
             break;
@@ -129,26 +157,22 @@ static void do_login(struct message *msg, int sockfd) {
         }
         case ACCOUNT_NOT_EXIST: {
             msg->msg_type = LO_NAK;
-        memset(msg->data, 0, MAX_DATA);
-            memcpy(msg->data, account_not_exist, strlen(account_not_exist));
+            set_str_val((char *)msg->data, (char *)account_not_exist);
             break;
         }
         case WRONG_PASSWORD: {
             msg->msg_type = LO_NAK;
-        memset(msg->data, 0, MAX_DATA);
-            memcpy(msg->data, wrong_password, strlen(wrong_password));
+            set_str_val((char *)msg->data, (char *)wrong_password);
             break;
         }
-        case ALREADY_ONLINE: {
+        case ALREADY_LOGIN: {
             msg->msg_type = LO_NAK;
-            memset(msg->data, 0, MAX_DATA);
-            memcpy(msg->data, already_online, strlen(already_online));
+            set_str_val((char *)msg->data, (char *)already_login);
             break;
         }
         case NO_MORE_ACCOUNT: {
             msg->msg_type = LO_NAK;
-        memset(msg->data, 0, MAX_DATA);
-            memcpy(msg->data, no_more_account, strlen(no_more_account));
+            set_str_val((char *)msg->data, (char *)no_more_account);
             break;
         }
         default: {
@@ -160,32 +184,33 @@ static void do_login(struct message *msg, int sockfd) {
 
 static void do_logout(struct message *msg, int sockfd) {
     char *client_id = (char *)msg->source;
-    remove_account(client_id);
     if(close(sockfd) < 0) {
         perror("close");
         exit(1);
     }
+    int client_idx = find_client(client_id);
+    login_client[client_idx] = false;
 }
 
 static void do_newsession(struct message *msg, int sockfd) {
     char *session_id = (char *)msg->data;
+    char * client_id = (char *)msg->source;
     enum session_stat stat = check_session(session_id);
     switch(stat) {
-        case SESSION_VALID: {
+        case SESSION_NOT_EXIST: {
             msg->msg_type = NS_ACK;
             add_session(session_id);
+            client_join_session(client_id, session_id);
             break;
         }
         case SESSION_EXISTS: {
             msg->msg_type = NS_NAK;
-            memset(msg->data, 0, MAX_DATA);
-            memcpy(msg->data, session_exists, strlen(session_exists));
+            set_str_val((char *)msg->data, (char *)session_exists);
             break;
         }
         case NO_MORE_SESSION: {
             msg->msg_type = NS_NAK;
-        memset(msg->data, 0, MAX_DATA);
-            memcpy(msg->data, no_more_session, strlen(no_more_session));
+            set_str_val((char *)msg->data, (char *)no_more_session);
             break;
         }
         default: {
@@ -195,11 +220,53 @@ static void do_newsession(struct message *msg, int sockfd) {
     send_message(msg, sockfd);
 }
 
+static void do_joinsession(struct message *msg, int sockfd) {
+    char *session_id = (char *)msg->data;
+    char *client_id = (char *)msg->source;
+    enum session_stat stat = check_session(session_id);
+    switch(stat) {
+        case SESSION_NOT_EXIST: {
+            msg->msg_type = JN_NAK;
+            set_str_val((char *)msg->data, (char *)session_not_exist);
+            break;
+        }
+        case SESSION_EXISTS: 
+        case NO_MORE_SESSION: { // when doing join, doesn't matter whether session space is full
+            int client_idx = find_client(client_id);
+            int session_idx = find_session(session_id);
+            if(session_client_map[session_idx][client_idx]) { // client already in session
+                msg->msg_type = JN_NAK;
+                set_str_val((char *)msg->data, (char *)client_already_in_session);
+                break;
+            }
+            msg->msg_type = JN_ACK;
+            client_join_session(client_id,session_id);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    send_message(msg, sockfd);
+}
+
+static void do_leavesession(struct message *msg, int sockfd) {
+    char *client_id = (char *)msg->source;
+    int client_idx = find_client(client_id);
+    for(int i = 0; i < MAX_SESSION; ++i) {
+        if(session_client_map[i][client_idx]) {
+            session_client_map[i][client_idx] = false;
+        }
+    }
+}
+
 void add_account(char *client_id) {
-    for(int i = 0; i < MAX_ONLINE; ++i) {
-        if(online_client[i] == NULL) {
-            online_client[i] = strdup(client_id);
-            ++online_count;
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        if(all_client[i] == NULL) {
+            all_client[i] = strdup(client_id);
+            login_client[i] = true;
+            session_client_map[MAX_SESSION][i] = true; // last row of the map is client that has not joined any session
+            ++total_account;
             return;
         }
     }
@@ -207,18 +274,19 @@ void add_account(char *client_id) {
 }
 
 void remove_account(char *client_id) {
-    int idx = find_client(client_id);
-    if(idx == -1) {
+    int client_idx = find_client(client_id);
+    if(client_idx == -1) {
         ereport("client to remove not found!");
     }
-    online_client[idx] = "";
-    //printf("\nclient %s removed\n\n", client_id);
-    --online_count;
+    all_client[client_idx] = "";
+//    int session_idx = find_session(session_id);
+//    session_client_map
+    --total_account;
 }
 
 int find_client(char *client_id) {
-    for(int i = 0; i < MAX_ONLINE; ++i) {
-        char *temp_id = online_client[i];
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        char *temp_id = all_client[i];
         if(temp_id != NULL && strcmp(client_id, temp_id) == 0) {
             return i;
         }
@@ -248,13 +316,21 @@ void add_session(char *session_id) {
 }
 
 static enum account_stat check_account(char *client_id, char *password) {
-    if(find_client(client_id) >= 0) return ALREADY_ONLINE;
-        if(online_count == MAX_ONLINE) return NO_MORE_ACCOUNT;
+    if(find_client(client_id) >= 0 && login_client[find_client(client_id)]) return ALREADY_LOGIN;
+    if(total_account == MAX_ACCOUNT) return NO_MORE_ACCOUNT;
     return ACCOUNT_VALID;
 }
 
 static enum session_stat check_session(char *session_id) {
+    if(find_session(session_id) == -1) return SESSION_NOT_EXIST;
     if(session_count == MAX_SESSION) return NO_MORE_SESSION;
-    if(find_session(session_id) >= 0) return SESSION_EXISTS;
-    return SESSION_VALID;
+    return SESSION_EXISTS;
+
+}
+
+void client_join_session(char *client_id, char *session_id) {
+    int session_idx = find_session(session_id);
+    int client_idx = find_client(client_id);
+    session_client_map[session_idx][client_idx] = true;
+    session_client_map[MAX_SESSION][client_idx] = false;
 }

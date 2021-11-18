@@ -103,7 +103,6 @@ int accept_conn(int sockfd) {
         exit(1);
     }
     inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof(s));
-    //printf("got connection from %s\n", s);
     return new_fd;
 }
 
@@ -124,4 +123,10 @@ void recv_message(struct message *msg, int sockfd) {
         exit(1);
     }
     deserialize(msg, buf);
+}
+
+void set_str_val(char* src, char *dst) {
+    char *tmp = strdup(dst);
+    memset(src, 0, strlen(src));
+    memcpy(src, tmp, strlen(tmp));
 }

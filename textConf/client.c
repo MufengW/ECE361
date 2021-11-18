@@ -1,7 +1,6 @@
 #include "utils.h"
 
 bool login = false;
-int in_session_count = 0;
 char *current_client = "";
 char *current_session = "";
 int sockfd;
@@ -16,8 +15,8 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd);
 static void do_login(struct message *msg);
 static void do_logout(struct message *msg);
 static void do_newsession(struct message *msg);
-
-void set_str_val(char *src, char *dst);
+static void do_joinsession(struct message *msg);
+static void do_leavesession(struct message *msg);
 
 int main() {
     bool exit = false;
@@ -41,14 +40,12 @@ static void process_msg(struct message *msg, char *buf) {
     char *data = strdup(buf); // make a copy of original data to avoid overwrite
     if(strlen(data) == 0) {
         printf("\ndata empty, try input again!\n\n");
-        get_and_process_prompt(msg);
         return;
     }
     char delim[] = " \n\t\v\f\r";
     char *first_word = strtok(data, delim);
     if(first_word == NULL) {
         printf("\ndata empty, try input again!\n\n");
-        get_and_process_prompt(msg);
         return;
     }
     msg->msg_type = get_type(first_word);
@@ -62,9 +59,11 @@ static void process_msg(struct message *msg, char *buf) {
             break;
         }
         case JOIN: {
+            do_joinsession(msg);
             break;
         }
         case LEAVE_SESS: {
+            do_leavesession(msg);
             break;
         }
         case NEW_SESS: {
@@ -113,7 +112,7 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
-    hints. ai_socktype = SOCK_STREAM;
+    hints.ai_socktype = SOCK_STREAM;
 
     if((rv = getaddrinfo(server_ip, server_port, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
@@ -129,14 +128,12 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
         exit(1);
     }
     inet_ntop(servinfo->ai_family, get_in_addr((struct sockaddr *)servinfo->ai_addr), s, sizeof(s));
-    //printf("client: connecting to %s\n", s);
     freeaddrinfo(servinfo);
 }
 
 static void do_login(struct message *msg) {
     if(login) {
         printf("\nyou have already logged in to %s on this machine!\n\n", current_client);
-        get_and_process_prompt(msg);
         return;
     }
     char delim[] = " \n\t\v\f\r";
@@ -145,8 +142,7 @@ static void do_login(struct message *msg) {
     char *server_ip = strtok(NULL, delim);
     char *server_port = strtok(NULL, delim);
     if(server_port == NULL) {
-        printf("\nlogin format error, please login with command:\n\n/login <client ID> <password> <server-IP> <server-port>\n\n");
-        get_and_process_prompt(msg);
+        printf("\nlogin format error, please login with command:\n\n/login <client id> <password> <server-ip> <server-port>\n\n");
         return;
     }
 
@@ -154,13 +150,8 @@ static void do_login(struct message *msg) {
 
     connect_to_server(server_ip, server_port, &sockfd);
 
-    // message data is the password
-    //memset(msg->data, 0, MAX_DATA);
-    //msg->data = &password;
     set_str_val((char *)msg->data, password);
     msg->size = strlen((const char *)msg->data);
-    //memset(msg->source, 0, MAX_NAME);
-    //strncpy((char *)msg->source, client_id, strlen(client_id));
     set_str_val((char *)msg->source, client_id);
     send_message(msg, sockfd);
     recv_message(msg, sockfd);
@@ -181,21 +172,15 @@ static void do_login(struct message *msg) {
             break;
          }
     }
-    get_and_process_prompt(msg);
-
-    //close(sockfd);
 }
 
 static void do_logout(struct message *msg) {
     if(!login) {
         printf("\nyou have not logged in to any account\n\n");
-        get_and_process_prompt(msg);
         return;
     }
     detect_extra_input();
 
-    //memset(msg->source, 0, MAX_NAME);
-    //strncpy((char *)msg->source, current_client, strlen(current_client));
     set_str_val((char *)msg->source, current_client);
     send_message(msg, sockfd);
     if(close(sockfd) < 0) {
@@ -208,27 +193,22 @@ static void do_logout(struct message *msg) {
 }
 
 static void do_newsession(struct message *msg) {
-    if(in_session_count > 0) {
-        printf("\nyou are already in session %s!\n\n", current_session);
-        get_and_process_prompt(msg);
-        return;
-    }
     if(!login) {
         printf("\nyou need to login first!\n\n");
-        get_and_process_prompt(msg);
         return;
     }
     char delim[] = " \n\t\v\f\r";
     char *session_id = strtok(NULL, delim);
 
+    if(session_id == NULL) {
+        printf("\ncreate new session format error, please use: \n\n/createsession <session ID>\n\n");
+        return;
+    }
+
     detect_extra_input();
 
-    //memset(msg->source, 0, MAX_NAME);
-    //strncpy((char *)msg->source, current_client, strlen(current_client));
     set_str_val((char *)msg->source, current_client);
 
-    //memset(msg->data, 0, MAX_DATA);
-    //strncpy((char *)msg->data, session_id, strlen(session_id));
     set_str_val((char *)msg->data, session_id);
 
     send_message(msg, sockfd);
@@ -237,7 +217,6 @@ static void do_newsession(struct message *msg) {
     switch(msg->msg_type) {
         case NS_ACK: {
             printf("\nnew session %s created!\n\n", session_id);
-        ++in_session_count;
             current_session = session_id;
             return;
         }
@@ -250,9 +229,59 @@ static void do_newsession(struct message *msg) {
             break;
          }
     }
-    get_and_process_prompt(msg);
-
 }
+
+static void do_joinsession(struct message *msg) {
+    if(!login) {
+        printf("\nyou need to login first!\n\n");
+        return;
+    }
+    char delim[] = " \n\t\v\f\r";
+    char *session_id = strtok(NULL, delim);
+    if(session_id == NULL) {
+        printf("\njoin session format error, please use: \n\n/joinsession <session ID>\n\n");
+        return;
+    }
+
+
+    detect_extra_input();
+
+    set_str_val((char *)msg->source, current_client);
+
+    set_str_val((char *)msg->data, session_id);
+
+    send_message(msg, sockfd);
+    recv_message(msg, sockfd);
+
+    switch(msg->msg_type) {
+        case JN_ACK: {
+            printf("\njoining session %s...\n\n", session_id);
+            current_session = session_id;
+            return;
+        }
+        case JN_NAK: {
+            printf("%s", msg->data);
+            break;
+        }
+        default: {
+            ereport("unkown message type!");
+            break;
+         }
+    }
+}
+
+static void do_leavesession(struct message *msg) {
+    if(!login) {
+        printf("\nyou need to login first!\n\n");
+        return;
+    }
+    detect_extra_input();
+
+    set_str_val((char *)msg->source, current_client);
+    send_message(msg, sockfd);
+    printf("\nclient %s has left all the sessions!\n\n", current_client);
+}
+
 
 void detect_extra_input() {
     char delim[] = " \n\t\v\f\r";
@@ -260,10 +289,4 @@ void detect_extra_input() {
     if(extra_input) {
         printf("\nextra input dected and ignored...\n\n");
     }
-}
-
-void set_str_val(char* src, char *dst) {
-    char *tmp = strdup(dst);
-    memset(src, 0, strlen(src));
-    memcpy(src, tmp, strlen(tmp));
 }
