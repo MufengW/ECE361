@@ -25,9 +25,11 @@ const char *no_more_account = "\ntoo many users online, need to wait for someone
 const char *session_exists = "\nthis session name already exists!\n\n";
 const char *session_not_exist = "\nthis session does not exist!\n\n";
 const char *no_more_session = "\ntoo many active sessions, need to wait for some sessions to close!\n\n";
+const char *already_in_a_session = "\nclient is already in a session!\n\n";
 const char *client_already_in_session = "\nclient is already in this session!\n\n";
 
 char *all_client[MAX_ACCOUNT];
+int fd_list[MAX_ACCOUNT];
 bool login_client[MAX_ACCOUNT];
 
 char *session[MAX_SESSION];
@@ -47,8 +49,9 @@ static void do_newsession(struct message *msg, int sockfd);
 static void do_joinsession(struct message *msg, int sockfd);
 static void do_leavesession(struct message *msg, int sockfd);
 static void do_query(struct message *msg, int sockfd);
+static void do_message(struct message *msg, int sockfd);
 
-void add_account(char *client_id);
+void add_account(char *client_id, int sockfd);
 void remove_account(char *client_id);
 int find_client(char *client_id);
 

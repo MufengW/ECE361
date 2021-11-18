@@ -108,6 +108,7 @@ static void process_input(struct message *msg, char *buf) {
             break;
         }
         case QUIT: {
+			   do_quit(msg);
             break;
         }
         case MESSAGE: {
@@ -344,6 +345,14 @@ static void process_query(struct message *msg) {
     }
     state = MESSAGE;
 
+}
+
+static void do_quit(struct message *msg) {
+    if(!login) {
+        printf("\ngoodbye!\n\n");
+        exit(0);
+    }
+    detect_extra_input();
 }
 
 void detect_extra_input() {
