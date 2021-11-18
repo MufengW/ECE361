@@ -69,26 +69,29 @@ int main(int argc, char *argv[]) {
     int listen_sockfd;
     start_listen(port, &listen_sockfd);
 
-    while(1) {
-        int recv_sockfd = accept_conn(listen_sockfd);
+    while(total_account < MAX_ACCOUNT) {
+        int *recv_sockfd = malloc(sizeof(int));
+        *recv_sockfd = accept_conn(listen_sockfd);
+
         pthread_t *new_thread = (pthread_t *)malloc(sizeof(pthread_t));
-        pthread_create(new_thread, NULL, (void *)&recv_main_loop, &recv_sockfd);
+        pthread_create(new_thread, NULL, (void *)recv_main_loop, recv_sockfd);
     }
 
     return 0;
 }
 
 void recv_main_loop(int *recv_sockfd) {
+    int sockfd = *recv_sockfd;
+    free(recv_sockfd);
     struct message *msg = (struct message *)malloc(sizeof(struct message));
 
     bool exit = false;
     while(!exit) {
         memset(msg, 0, sizeof(*msg));
-        //pthread_mutex_lock(&lock);
-        exit = process_message(msg, *recv_sockfd);
-        //pthread_mutex_unlock(&lock);
+        exit = process_message(msg, sockfd);
     }
     free(msg);
+    pthread_exit(0);
 }
 
 static void init_global() {
@@ -98,7 +101,7 @@ static void init_global() {
     }
     for(j = 0; j < MAX_ACCOUNT; ++j) {
         all_client[j] = NULL;
-    login_client[i] = false;
+        login_client[i] = false;
     }
     for(i = 0; i < MAX_SESSION + 1; ++i) {
         for(j = 0; j < MAX_ACCOUNT; ++j) {
