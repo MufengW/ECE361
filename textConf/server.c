@@ -44,6 +44,7 @@ static void do_logout(struct message *msg, int sockfd);
 static void do_newsession(struct message *msg, int sockfd);
 static void do_joinsession(struct message *msg, int sockfd);
 static void do_leavesession(struct message *msg, int sockfd);
+static void do_query(struct message *msg, int sockfd);
 
 void add_account(char *client_id);
 void remove_account(char *client_id);
@@ -130,6 +131,7 @@ static bool process_message(struct message *msg, int sockfd) {
             return false;
         }
         case QUERY: {
+                do_query(msg, sockfd);
             break;
         }
         case QUIT: {
@@ -258,6 +260,28 @@ static void do_leavesession(struct message *msg, int sockfd) {
             session_client_map[i][client_idx] = false;
         }
     }
+}
+
+static void do_query(struct message *msg, int sockfd) {
+    msg->msg_type = QU_ACK;
+    char *tmp_session;
+    char *tmp_client;
+    char data[MAX_DATA];
+    memset(data, 0, MAX_DATA);
+    for(int i = 0; i < MAX_SESSION; ++i) {
+        if(session[i] != NULL){
+            tmp_session = session[i];
+            sprintf(data + strlen(data),"\nsession %s:\n", tmp_session);
+            for(int j = 0; j < MAX_ACCOUNT; ++j) {
+                if(session_client_map[i][j]) {
+                    tmp_client = all_client[j];
+                    sprintf(data + strlen(data),"\tclient %s\n", tmp_client);
+                }
+            }
+        }
+    }
+    set_str_val((char *)msg->data, data);
+    send_message(msg, sockfd);
 }
 
 void add_account(char *client_id) {

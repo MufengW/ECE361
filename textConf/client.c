@@ -17,6 +17,7 @@ static void do_logout(struct message *msg);
 static void do_newsession(struct message *msg);
 static void do_joinsession(struct message *msg);
 static void do_leavesession(struct message *msg);
+static void do_query(struct message *msg);
 
 int main() {
     bool exit = false;
@@ -71,6 +72,7 @@ static void process_msg(struct message *msg, char *buf) {
             break;
         }
         case QUERY: {
+                do_query(msg);
             break;
         }
         case QUIT: {
@@ -282,6 +284,24 @@ static void do_leavesession(struct message *msg) {
     printf("\nclient %s has left all the sessions!\n\n", current_client);
 }
 
+static void do_query(struct message *msg) {
+    if(!login) {
+        printf("\nyou need to login first!\n\n");
+        return;
+    }
+    detect_extra_input();
+
+    send_message(msg, sockfd);
+    recv_message(msg, sockfd);
+
+    if(msg->msg_type == QU_ACK) {
+        printf("%s", msg->data);
+        return;
+    } else {
+        ereport("unkown message type!");
+    }
+
+}
 
 void detect_extra_input() {
     char delim[] = " \n\t\v\f\r";

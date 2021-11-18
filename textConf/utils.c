@@ -117,6 +117,7 @@ void send_message(struct message *msg, int sockfd) {
 }
 
 void recv_message(struct message *msg, int sockfd) {
+    memset(msg, 0, sizeof(struct message));
     char buf[sizeof(struct message) + sizeof(int) * 2];
     if(recv(sockfd, buf, MAX_DATA, 0) == -1) {
         perror("recv");
