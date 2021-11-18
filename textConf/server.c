@@ -15,10 +15,9 @@ int main(int argc, char *argv[]) {
         int *recv_sockfd = malloc(sizeof(int));
         *recv_sockfd = accept_conn(listen_sockfd);
 
-        pthread_t *new_thread = (pthread_t *)malloc(sizeof(pthread_t));
-        pthread_create(new_thread, NULL, (void *)recv_main_loop, recv_sockfd);
+        pthread_t new_thread;
+        pthread_create(&new_thread, NULL, (void *)recv_main_loop, recv_sockfd);
     }
-
     return 0;
 }
 
@@ -57,7 +56,7 @@ static bool process_message(struct message *msg, int sockfd) {
     switch (msg->msg_type) {
         case LOGIN: {
             do_login(msg, sockfd);
-            return false;
+            break;
         }
         case EXIT: {
             do_logout(msg, sockfd);
@@ -73,10 +72,10 @@ static bool process_message(struct message *msg, int sockfd) {
         }
         case NEW_SESS: {
             do_newsession(msg, sockfd);
-            return false;
+            break;
         }
         case QUERY: {
-                do_query(msg, sockfd);
+            do_query(msg, sockfd);
             break;
         }
         case QUIT: {
@@ -201,8 +200,18 @@ static void do_leavesession(struct message *msg, int sockfd) {
     char *client_id = (char *)msg->source;
     int client_idx = find_client(client_id);
     for(int i = 0; i < MAX_SESSION; ++i) {
+        bool empty = true;
         if(session_client_map[i][client_idx]) {
             session_client_map[i][client_idx] = false;
+        }
+        for(int j = 0; j < MAX_ACCOUNT; ++j) {
+            if(session_client_map[i][j]) {
+                empty = false;
+                break;
+            }
+        }
+        if(empty) {
+            session[i] = NULL;
         }
     }
 }
