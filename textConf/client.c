@@ -53,10 +53,11 @@ static void process_msg(struct message *msg, char *buf) {
             break;
         }
         case QUERY: {
-                do_query(msg);
+            do_query(msg);
             break;
         }
         case QUIT: {
+			   do_quit(msg);
             break;
         }
         case MESSAGE: {
@@ -282,6 +283,14 @@ static void do_query(struct message *msg) {
         ereport("unkown message type!");
     }
 
+}
+
+static void do_quit(struct message *msg) {
+    if(!login) {
+        printf("\ngoodbye!\n\n");
+        exit(0);
+    }
+    detect_extra_input();
 }
 
 void detect_extra_input() {

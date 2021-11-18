@@ -20,5 +20,6 @@ static void do_newsession(struct message *msg);
 static void do_joinsession(struct message *msg);
 static void do_leavesession(struct message *msg);
 static void do_query(struct message *msg);
+static void do_quit(struct message *msg);
 
 #endif /* CLIENT_H */

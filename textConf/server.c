@@ -43,6 +43,7 @@ static void init_global() {
     for(j = 0; j < MAX_ACCOUNT; ++j) {
         all_client[j] = NULL;
         login_client[i] = false;
+	fd_list[i] = -1;
     }
     for(i = 0; i < MAX_SESSION + 1; ++i) {
         for(j = 0; j < MAX_ACCOUNT; ++j) {
@@ -82,12 +83,13 @@ static bool process_message(struct message *msg, int sockfd) {
             break;
         }
         case MESSAGE: {
+			      do_message(msg, sockfd);
             break;
         }
         default: {
             break;
         }
-    }
+    } 
     return false;
 }
 
@@ -98,7 +100,7 @@ static void do_login(struct message *msg, int sockfd) {
     switch(stat) {
         case ACCOUNT_VALID: {
             msg->msg_type = LO_ACK;
-            add_account(client_id);
+            add_account(client_id, sockfd);
             break;
         }
         case ACCOUNT_NOT_EXIST: {
@@ -140,11 +142,11 @@ static void do_logout(struct message *msg, int sockfd) {
 
 static void do_newsession(struct message *msg, int sockfd) {
     char *session_id = (char *)msg->data;
-    char * client_id = (char *)msg->source;
+    char *client_id = (char *)msg->source;
     enum session_stat stat = check_session(session_id);
     switch(stat) {
         case SESSION_NOT_EXIST: {
-            msg->msg_type = NS_ACK;
+	    msg->msg_type = NS_ACK;
             add_session(session_id);
             client_join_session(client_id, session_id);
             break;
@@ -162,6 +164,11 @@ static void do_newsession(struct message *msg, int sockfd) {
         default: {
             break;
         }
+    }
+    // disable client from joining multiple sessions, will add this feature to lab5.
+    if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
+        msg->msg_type = NS_NAK;
+        set_str_val((char *)msg->data, (char *)already_in_a_session);
     }
     send_message(msg, sockfd);
 }
@@ -192,6 +199,11 @@ static void do_joinsession(struct message *msg, int sockfd) {
         default: {
             break;
         }
+    }
+    // disable client from joining multiple sessions, will add this feature to lab5.
+    if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
+        msg->msg_type = JN_NAK;
+        set_str_val((char *)msg->data, (char *)already_in_a_session);
     }
     send_message(msg, sockfd);
 }
@@ -238,9 +250,27 @@ static void do_query(struct message *msg, int sockfd) {
     send_message(msg, sockfd);
 }
 
-void add_account(char *client_id) {
+static void do_message(struct message *msg, int sockfd) {
+	char *client_id = (char *)msg->source;
+	int client_idx = find_client(client_id);
+	int session_idx = -1;
+	if(session_client_map[MAX_SESSION][client_idx]) {
+		// not in any session
+	}
+	for(int i = 0; i < MAX_SESSION; ++i) {
+		if(session_client_map[i][client_idx]) {
+			session_idx = i;
+			break;
+		}
+	}
+	char *client_session = session[session_idx];
+	// loop through session to get all client
+}
+
+void add_account(char *client_id, int sockfd) {
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(all_client[i] == NULL) {
+		fd_list[i] = sockfd;
             all_client[i] = strdup(client_id);
             login_client[i] = true;
             session_client_map[MAX_SESSION][i] = true; // last row of the map is client that has not joined any session
