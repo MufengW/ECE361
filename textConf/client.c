@@ -420,7 +420,7 @@ static void do_message(struct message *msg) {
 }
 
 static void process_message(struct message *msg) {
-    printf("%s", msg->data);
+    printf("%s%s:$", msg->data, current_client);
 }
 
 static void do_quit(struct message *msg) {

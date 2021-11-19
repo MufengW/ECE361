@@ -277,7 +277,6 @@ static void do_message(struct message *msg, int sockfd) {
     if (session_client_map[MAX_SESSION][client_idx]) {
         // not in any session
         set_str_val((char *)msg->data, (char *)not_in_session);
-    sprintf((char *)msg->data + strlen((char *)msg->data), "%s:$",msg->source);
         msg->msg_type = MESSAGE;
         send_message(msg, sockfd);
     return;
@@ -296,7 +295,7 @@ static void do_message(struct message *msg, int sockfd) {
         if(session_client_map[session_idx][i]){
             if(fd_list[i] != sockfd){
             memset(data, 0, MAX_DATA * 2);
-            sprintf(data, "\n<message from %s>: %s\n%s:$", msg->source, msg->data, all_client[i]);
+            sprintf(data, "\n<message from %s>: %s\n", msg->source, msg->data);
             set_str_val((char *)msg->data, data);
                 send_message(msg, fd_list[i]);
             }
