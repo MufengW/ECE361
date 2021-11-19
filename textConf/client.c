@@ -193,7 +193,9 @@ static void process_login(struct message *msg) {
         case LO_ACK: {
             printf("\nlogin successful!\n\n");
             login = true;
-            current_client = (char *) msg->source;
+
+            current_client = (char *) malloc(sizeof(char) * MAX_NAME);
+            set_str_val(current_client, (char *) msg->source);
             break;
         }
         case LO_NAK: {
@@ -348,7 +350,7 @@ static void process_query(struct message *msg) {
 }
 
 static void do_quit(struct message *msg) {
-    if(!login) {
+    if (!login) {
         printf("\ngoodbye!\n\n");
         exit(0);
     }
