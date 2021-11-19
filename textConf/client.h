@@ -2,6 +2,7 @@
 #define CLIENT_H
 #include "utils.h"
 
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 enum type state = MESSAGE;
 bool connected = false;
 bool login = false;

@@ -155,7 +155,15 @@ static void do_newsession(struct message *msg, int sockfd) {
     char *session_id = (char *) msg->data;
     char *client_id = (char *) msg->source;
     enum session_stat stat = check_session(session_id);
-    switch (stat) {
+
+    // disable client from joining multiple sessions, will add this feature to lab5.
+    if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
+        msg->msg_type = NS_NAK;
+        set_str_val((char *)msg->data, (char *)already_in_a_session);
+    send_message(msg, sockfd);
+    return;
+    }
+    switch(stat) {
         case SESSION_NOT_EXIST: {
             msg->msg_type = NS_ACK;
             add_session(session_id);
@@ -176,11 +184,6 @@ static void do_newsession(struct message *msg, int sockfd) {
             break;
         }
     }
-    // disable client from joining multiple sessions, will add this feature to lab5.
-    if (!session_client_map[MAX_SESSION][find_client(client_id)]) {
-        msg->msg_type = NS_NAK;
-        set_str_val((char *) msg->data, (char *) already_in_a_session);
-    }
     send_message(msg, sockfd);
 }
 
@@ -188,7 +191,15 @@ static void do_joinsession(struct message *msg, int sockfd) {
     char *session_id = (char *) msg->data;
     char *client_id = (char *) msg->source;
     enum session_stat stat = check_session(session_id);
-    switch (stat) {
+
+    // disable client from joining multiple sessions, will add this feature to lab5.
+    if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
+        msg->msg_type = JN_NAK;
+        set_str_val((char *)msg->data, (char *)already_in_a_session);
+    send_message(msg, sockfd);
+    return;
+    }
+    switch(stat) {
         case SESSION_NOT_EXIST: {
             msg->msg_type = JN_NAK;
             set_str_val((char *) msg->data, (char *) session_not_exist);
@@ -211,11 +222,6 @@ static void do_joinsession(struct message *msg, int sockfd) {
             break;
         }
     }
-    // disable client from joining multiple sessions, will add this feature to lab5.
-    if (!session_client_map[MAX_SESSION][find_client(client_id)]) {
-        msg->msg_type = JN_NAK;
-        set_str_val((char *) msg->data, (char *) already_in_a_session);
-    }
     send_message(msg, sockfd);
 }
 
@@ -237,6 +243,7 @@ static void do_leavesession(struct message *msg, int sockfd) {
             session[i] = NULL;
         }
     }
+    session_client_map[MAX_SESSION][client_idx] = true;
 }
 
 static void do_query(struct message *msg, int sockfd) {
