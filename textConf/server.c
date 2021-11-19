@@ -80,10 +80,11 @@ static bool process_message(struct message *msg, int sockfd) {
             break;
         }
         case QUIT: {
-            break;
+               do_quit(msg, sockfd);
+            return true;
         }
         case MESSAGE: {
-                  do_message(msg, sockfd);
+            do_message(msg, sockfd);
             break;
         }
         default: {
@@ -263,9 +264,11 @@ static void do_message(struct message *msg, int sockfd) {
     int session_idx = -1;
     if(session_client_map[MAX_SESSION][client_idx]) {
         // not in any session
-        set_str_val((char *)msg, (char *)not_in_session);
+        set_str_val((char *)msg->data, (char *)not_in_session);
+    sprintf((char *)msg->data + strlen((char *)msg->data), "%s:$",msg->source);
         msg->msg_type = MESSAGE;
         send_message(msg, sockfd);
+    return;
     }
     for(int i = 0; i < MAX_SESSION; ++i) {
         if(session_client_map[i][client_idx]) {
@@ -273,19 +276,35 @@ static void do_message(struct message *msg, int sockfd) {
             break;
         }
     }
+    char data[MAX_DATA * 2];
     char *client_session = session[session_idx];
     printf("sending message to users in session %s...\n\n", client_session);
     // loop through session to get all client
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(session_client_map[session_idx][i]){
             if(fd_list[i] != sockfd){
+            memset(data, 0, MAX_DATA * 2);
+            sprintf(data, "\n<message from %s>: %s\n%s:$", msg->source, msg->data, all_client[i]);
+            set_str_val((char *)msg->data, data);
                 send_message(msg, fd_list[i]);
             }
         }
     }
 }
 
+static void do_quit(struct message *msg, int sockfd) {
+    char *client_id = (char *)msg->source;
+    remove_account(client_id);
+    close(sockfd);
+}
+
 void add_account(char *client_id, int sockfd) {
+    int client_idx = find_client(client_id);
+    if(client_idx != -1) { // account already exits, which implies this account had logged out before.
+        fd_list[client_idx] = sockfd;
+        login_client[client_idx] = true;
+        return;
+    }
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(all_client[i] == NULL) {
         fd_list[i] = sockfd;
@@ -304,9 +323,23 @@ void remove_account(char *client_id) {
     if(client_idx == -1) {
         ereport("client to remove not found!");
     }
-    all_client[client_idx] = "";
-//    int session_idx = find_session(session_id);
-//    session_client_map
+    all_client[client_idx] = NULL;
+    for(int i = 0; i < MAX_SESSION; ++i) {
+        bool empty = true;
+        if(session_client_map[i][client_idx]) {
+            session_client_map[i][client_idx] = false;
+        }
+        for(int j = 0; j < MAX_ACCOUNT; ++j) {
+            if(session_client_map[i][j]) {
+                empty = false;
+                break;
+            }
+        }
+        if(empty) {
+            session[i] = NULL;
+        }
+    }
+    session_client_map[MAX_SESSION][client_idx] = false;
     --total_account;
 }
 
