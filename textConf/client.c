@@ -179,8 +179,10 @@ static void do_login(struct message *msg) {
 
     detect_extra_input();
 
-    connect_to_server(server_ip, server_port, &sockfd);
-    connected = true;
+    if (!connected) {
+        connect_to_server(server_ip, server_port, &sockfd);
+        connected = true;
+    }
 
     set_str_val((char *) msg->data, password);
     msg->size = strlen((const char *) msg->data);

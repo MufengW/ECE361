@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
 
 void read_credentials() {
     FILE *credentials_file = fopen("accounts", "r");
+    total_credentials = 0;
     while (!feof(credentials_file)) {
         fgets(credentials[total_credentials], MAX_NAME, credentials_file);
         total_credentials++;
@@ -348,9 +349,10 @@ void add_session(char *session_id) {
 static enum account_stat check_account(char *client_id, char *password) {
     if (find_client(client_id) >= 0 && login_client[find_client(client_id)]) return ALREADY_LOGIN;
     if (total_account == MAX_ACCOUNT) return NO_MORE_ACCOUNT;
-    printf("%d\n",total_credentials);
     for (int i = 0; i < total_credentials; i++) {
-        char *id = strtok(credentials[i], ",");
+        char cred[MAX_NAME];
+        strcpy(cred, credentials[i]);
+        char *id = strtok(cred, ",");
         char *pass = strtok(NULL, "\n");
         if (strcmp(id, client_id) == 0) {
             if (strcmp(pass, password) == 0) {
@@ -360,7 +362,6 @@ static enum account_stat check_account(char *client_id, char *password) {
             }
         }
     }
-    printf("not found\n");
     return ACCOUNT_NOT_EXIST;
 }
 
