@@ -355,6 +355,14 @@ static void do_quit(struct message *msg) {
     detect_extra_input();
 }
 
+static void do_quit(struct message *msg) {
+    if(!login) {
+        printf("\ngoodbye!\n\n");
+        exit(0);
+    }
+    detect_extra_input();
+}
+
 void detect_extra_input() {
     char delim[] = " \n\t\v\f\r";
     char *extra_input = strtok(NULL, delim);

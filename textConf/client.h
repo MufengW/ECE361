@@ -30,6 +30,5 @@ static void do_leavesession(struct message *msg);
 static void do_query(struct message *msg);
 static void process_query(struct message *msg);
 static void do_quit(struct message *msg);
->>>>>>> broadcast message from server in progress
 
 #endif /* CLIENT_H */
