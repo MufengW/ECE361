@@ -43,7 +43,7 @@ static void init_global() {
     for(j = 0; j < MAX_ACCOUNT; ++j) {
         all_client[j] = NULL;
         login_client[i] = false;
-	fd_list[i] = -1;
+    fd_list[i] = -1;
     }
     for(i = 0; i < MAX_SESSION + 1; ++i) {
         for(j = 0; j < MAX_ACCOUNT; ++j) {
@@ -83,7 +83,7 @@ static bool process_message(struct message *msg, int sockfd) {
             break;
         }
         case MESSAGE: {
-			      do_message(msg, sockfd);
+                  do_message(msg, sockfd);
             break;
         }
         default: {
@@ -146,7 +146,7 @@ static void do_newsession(struct message *msg, int sockfd) {
     enum session_stat stat = check_session(session_id);
     switch(stat) {
         case SESSION_NOT_EXIST: {
-	    msg->msg_type = NS_ACK;
+        msg->msg_type = NS_ACK;
             add_session(session_id);
             client_join_session(client_id, session_id);
             break;
@@ -251,26 +251,37 @@ static void do_query(struct message *msg, int sockfd) {
 }
 
 static void do_message(struct message *msg, int sockfd) {
-	char *client_id = (char *)msg->source;
-	int client_idx = find_client(client_id);
-	int session_idx = -1;
-	if(session_client_map[MAX_SESSION][client_idx]) {
-		// not in any session
-	}
-	for(int i = 0; i < MAX_SESSION; ++i) {
-		if(session_client_map[i][client_idx]) {
-			session_idx = i;
-			break;
-		}
-	}
-	char *client_session = session[session_idx];
-	// loop through session to get all client
+    char *client_id = (char *)msg->source;
+    int client_idx = find_client(client_id);
+    int session_idx = -1;
+    if(session_client_map[MAX_SESSION][client_idx]) {
+        // not in any session
+        set_str_val((char *)msg, (char *)not_in_session);
+        msg->msg_type = MESSAGE;
+        send_message(msg, sockfd);
+    }
+    for(int i = 0; i < MAX_SESSION; ++i) {
+        if(session_client_map[i][client_idx]) {
+            session_idx = i;
+            break;
+        }
+    }
+    char *client_session = session[session_idx];
+    printf("sending message to users in session %s...\n\n", client_session);
+    // loop through session to get all client
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        if(session_client_map[session_idx][i]){
+            if(fd_list[i] != sockfd){
+                send_message(msg, fd_list[i]);
+            }
+        }
+    }
 }
 
 void add_account(char *client_id, int sockfd) {
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(all_client[i] == NULL) {
-		fd_list[i] = sockfd;
+        fd_list[i] = sockfd;
             all_client[i] = strdup(client_id);
             login_client[i] = true;
             session_client_map[MAX_SESSION][i] = true; // last row of the map is client that has not joined any session
