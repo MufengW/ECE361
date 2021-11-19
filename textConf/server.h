@@ -33,6 +33,9 @@ char *all_client[MAX_ACCOUNT];
 int fd_list[MAX_ACCOUNT];
 bool login_client[MAX_ACCOUNT];
 
+char credentials[MAX_ACCOUNT][MAX_NAME];
+int total_credentials = 0;
+
 char *session[MAX_SESSION];
 bool session_client_map[MAX_SESSION + 1][MAX_ACCOUNT];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -42,6 +45,7 @@ int session_count = 0;
 
 static void init_global();
 void recv_main_loop(int *listen_sockfd);
+static void read_credentials();
 static bool process_message(struct message *msg, int sockfd);
 
 static void do_login(struct message *msg, int sockfd);
