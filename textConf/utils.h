@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#define _GNU_SOURCE
+
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
@@ -34,7 +36,7 @@
 #define MAX_SESSION 20
 
 enum type {
-    LOGIN,
+    LOGIN = 1,
     LO_ACK,
     LO_NAK,
     EXIT,

@@ -16,27 +16,32 @@ void get_message() {
     struct message *msg = (struct message *) malloc(sizeof(struct message));
     while (1) {
         if (connected) {
-            recv_message(msg, sockfd);
-            process_message(msg);
+        recv_message(msg, sockfd);
+            process_incoming_msg(msg);
         }
     }
 }
 
-void process_message(struct message *msg) {
-    switch (state) {
-        case LOGIN:
+void process_incoming_msg(struct message *msg) {
+    if(!connected) return;
+    switch (msg->msg_type) {
+        case LO_ACK:
+        case LO_NAK:
             process_login(msg);
             break;
-        case NEW_SESS:
+        case NS_ACK:
+        case NS_NAK:
             process_newsession(msg);
             break;
-        case QUERY:
+        case QU_ACK:
             process_query(msg);
             break;
-        case JOIN:
+        case JN_ACK:
+        case JN_NAK:
             process_joinsession(msg);
             break;
         case MESSAGE:
+        process_message(msg);
             break;
         default:
             break;
@@ -47,17 +52,15 @@ void get_prompt() {
     bool exit = false;
     struct message *msg = (struct message *) malloc(sizeof(struct message));
     while (!exit) {
-        if (state == MESSAGE) {
-            get_and_process_prompt(msg);
-        }
+        exit = get_and_process_prompt(msg);
     }
 }
 
-void get_and_process_prompt(struct message *msg) {
+bool get_and_process_prompt(struct message *msg) {
     char buf[MAX_DATA];
     memset(buf, 0, MAX_DATA);
     get_input(buf);
-    process_input(msg, buf);
+    return process_input(msg, buf);
 }
 
 void get_input(char *buf) {
@@ -69,18 +72,19 @@ void get_input(char *buf) {
     fgets(buf, MAX_DATA, stdin);
 }
 
-static void process_input(struct message *msg, char *buf) {
+static bool process_input(struct message *msg, char *buf) {
     char *data = strdup(buf); // make a copy of original data to avoid overwrite
     if (strlen(data) == 0) {
         printf("\ndata empty, try input again!\n\n");
-        return;
+        return false;
     }
     char delim[] = " \n\t\v\f\r";
     char *first_word = strtok(data, delim);
     if (first_word == NULL) {
         printf("\ndata empty, try input again!\n\n");
-        return;
+        return false;
     }
+    set_str_val((char *)msg->data, buf);
     msg->msg_type = get_type(first_word);
     switch (msg->msg_type) {
         case LOGIN: {
@@ -109,16 +113,17 @@ static void process_input(struct message *msg, char *buf) {
         }
         case QUIT: {
             do_quit(msg);
-            break;
+            return true;
         }
         case MESSAGE: {
+            do_message(msg);
             break;
         }
         default: {
             break;
         }
-            return;
     }
+    return false;
 }
 
 
@@ -165,6 +170,10 @@ static void do_login(struct message *msg) {
         printf("\nyou have already logged in to %s on this machine!\n\n", current_client);
         return;
     }
+    pthread_mutex_lock(&lock_login);
+    done_login = false;
+    pthread_mutex_unlock(&lock_login);
+
     char delim[] = " \n\t\v\f\r";
     char *client_id = strtok(NULL, delim);
     char *password = strtok(NULL, delim);
@@ -175,8 +184,6 @@ static void do_login(struct message *msg) {
         return;
     }
 
-    state = LOGIN;
-
     detect_extra_input();
 
     connect_to_server(server_ip, server_port, &sockfd);
@@ -186,6 +193,10 @@ static void do_login(struct message *msg) {
     msg->size = strlen((const char *) msg->data);
     set_str_val((char *) msg->source, client_id);
     send_message(msg, sockfd);
+    // need to wait for process ack
+    while(!done_login) {
+        pthread_yield();
+    }
 }
 
 static void process_login(struct message *msg) {
@@ -207,7 +218,11 @@ static void process_login(struct message *msg) {
             break;
         }
     }
-    state = MESSAGE;
+
+    // login command finished
+    pthread_mutex_lock(&lock_login);
+    done_login = true;
+    pthread_mutex_unlock(&lock_login);
 }
 
 static void do_logout(struct message *msg) {
@@ -223,12 +238,11 @@ static void do_logout(struct message *msg) {
     pthread_mutex_lock(&lock);
     login = false;
     connected = false;
+    pthread_mutex_unlock(&lock);
     if (close(sockfd) < 0) {
         perror("close");
         exit(1);
     }
-    pthread_mutex_unlock(&lock);
-
     printf("\naccount %s have successfully logged out!\n\n", current_client);
     current_client = "";
 }
@@ -238,6 +252,11 @@ static void do_newsession(struct message *msg) {
         printf("\nyou need to login first!\n\n");
         return;
     }
+
+    pthread_mutex_lock(&lock_newsession);
+    done_newsession = false;
+    pthread_mutex_unlock(&lock_newsession);
+
     char delim[] = " \n\t\v\f\r";
     char *session_id = strtok(NULL, delim);
 
@@ -246,8 +265,6 @@ static void do_newsession(struct message *msg) {
         return;
     }
 
-    state = NEW_SESS;
-
     detect_extra_input();
 
     set_str_val((char *) msg->source, current_client);
@@ -255,6 +272,11 @@ static void do_newsession(struct message *msg) {
     set_str_val((char *) msg->data, session_id);
 
     send_message(msg, sockfd);
+
+    // need to wait for process ack
+    while(!done_newsession) {
+        pthread_yield();
+    }
 }
 
 static void process_newsession(struct message *msg) {
@@ -274,7 +296,11 @@ static void process_newsession(struct message *msg) {
             break;
         }
     }
-    state = MESSAGE;
+
+    // newsession command finished
+    pthread_mutex_lock(&lock_newsession);
+    done_newsession = true;
+    pthread_mutex_unlock(&lock_newsession);
 }
 
 static void do_joinsession(struct message *msg) {
@@ -282,14 +308,17 @@ static void do_joinsession(struct message *msg) {
         printf("\nyou need to login first!\n\n");
         return;
     }
+
+    pthread_mutex_lock(&lock_joinsession);
+    done_joinsession = false;
+    pthread_mutex_unlock(&lock_joinsession);
+
     char delim[] = " \n\t\v\f\r";
     char *session_id = strtok(NULL, delim);
     if (session_id == NULL) {
         printf("\njoin session format error, please use: \n\n/joinsession <session ID>\n\n");
         return;
     }
-    state = JOIN;
-
 
     detect_extra_input();
 
@@ -298,6 +327,11 @@ static void do_joinsession(struct message *msg) {
     set_str_val((char *) msg->data, session_id);
 
     send_message(msg, sockfd);
+
+    // need to wait for process ack
+    while(!done_joinsession) {
+        pthread_yield();
+    }
 
 }
 
@@ -318,7 +352,11 @@ static void process_joinsession(struct message *msg) {
             break;
         }
     }
-    state = MESSAGE;
+
+    // joinsession command finished
+    pthread_mutex_lock(&lock_joinsession);
+    done_joinsession = true;
+    pthread_mutex_unlock(&lock_joinsession);
 }
 
 static void do_leavesession(struct message *msg) {
@@ -338,10 +376,18 @@ static void do_query(struct message *msg) {
         printf("\nyou need to login first!\n\n");
         return;
     }
-    state = QUERY;
+
+    pthread_mutex_lock(&lock_query);
+    done_query = false;
+    pthread_mutex_unlock(&lock_query);
+
     detect_extra_input();
 
     send_message(msg, sockfd);
+
+    while(!done_query) {
+        pthread_yield();
+    }
 }
 
 static void process_query(struct message *msg) {
@@ -350,16 +396,37 @@ static void process_query(struct message *msg) {
     } else {
         ereport("unkown message type!");
     }
-    state = MESSAGE;
+    pthread_mutex_lock(&lock_query);
+    done_query = true;
+    pthread_mutex_unlock(&lock_query);
+}
 
+static void do_message(struct message *msg) {
+    if (!login) {
+        printf("\nyou need to login first!\n\n");
+        return;
+    }
+
+    set_str_val((char *)msg->source, current_client);
+    send_message(msg, sockfd);
+    printf("\nyour message has been sent\n\n");
+}
+
+static void process_message(struct message *msg) {
+    printf("%s", msg->data);
 }
 
 static void do_quit(struct message *msg) {
     if (!login) {
         printf("\ngoodbye!\n\n");
-        exit(0);
+        return;
     }
     detect_extra_input();
+
+    set_str_val((char *)msg->source, current_client);
+    send_message(msg, sockfd);
+    printf("\ngoodbye!\n\n");
+    return;
 }
 
 void detect_extra_input() {

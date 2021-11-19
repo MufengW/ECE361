@@ -55,6 +55,7 @@ static void do_joinsession(struct message *msg, int sockfd);
 static void do_leavesession(struct message *msg, int sockfd);
 static void do_query(struct message *msg, int sockfd);
 static void do_message(struct message *msg, int sockfd);
+static void do_quit(struct message *msg, int sockfd);
 
 void add_account(char *client_id, int sockfd);
 void remove_account(char *client_id);
