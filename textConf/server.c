@@ -388,9 +388,11 @@ void add_session(char *session_id) {
 static enum account_stat check_account(char *client_id, char *password) {
     if (find_client(client_id) >= 0 && login_client[find_client(client_id)]) return ALREADY_LOGIN;
     if (total_account == MAX_ACCOUNT) return NO_MORE_ACCOUNT;
-    printf("%d\n",total_credentials);
     for (int i = 0; i < total_credentials; i++) {
-        char *id = strtok(credentials[i], ",");
+        char tmp[MAX_DATA];
+        memset(tmp, 0, MAX_DATA);
+        strcpy(tmp,credentials[i]);
+        char *id = strtok(tmp, ",");
         char *pass = strtok(NULL, "\n");
         if (strcmp(id, client_id) == 0) {
             if (strcmp(pass, password) == 0) {
@@ -400,7 +402,6 @@ static enum account_stat check_account(char *client_id, char *password) {
             }
         }
     }
-    printf("not found\n");
     return ACCOUNT_NOT_EXIST;
 }
 

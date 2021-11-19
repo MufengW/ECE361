@@ -119,11 +119,14 @@ void send_message(struct message *msg, int sockfd) {
 void recv_message(struct message *msg, int sockfd) {
     memset(msg, 0, sizeof(struct message));
     char buf[sizeof(struct message) + sizeof(int) * 2];
-    if(recv(sockfd, buf, MAX_DATA, 0) == -1) {
+    int rt = recv(sockfd, buf, MAX_DATA, 0);
+    if(rt == -1) {
         perror("recv");
         exit(1);
     }
-    deserialize(msg, buf);
+    if(rt > 0) {
+        deserialize(msg, buf);
+    }
 }
 
 void set_str_val(char* src, char *dst) {

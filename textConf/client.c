@@ -186,7 +186,9 @@ static void do_login(struct message *msg) {
 
     detect_extra_input();
 
-    connect_to_server(server_ip, server_port, &sockfd);
+    if(!connected) {
+        connect_to_server(server_ip, server_port, &sockfd);
+    }
     connected = true;
 
     set_str_val((char *) msg->data, password);
@@ -211,6 +213,11 @@ static void process_login(struct message *msg) {
         }
         case LO_NAK: {
             printf("%s", msg->data);
+            pthread_mutex_lock(&lock);
+            login = false;
+            connected = false;
+            pthread_mutex_unlock(&lock);
+            close(sockfd);
             break;
         }
         default: {
