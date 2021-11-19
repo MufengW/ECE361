@@ -1,15 +1,15 @@
 #include "client.h"
 
 int main() {
-    pthread_t *new_thread = (pthread_t *) malloc(sizeof(pthread_t));
-    pthread_create(new_thread, NULL, (void *) get_prompt, NULL);
+    pthread_t prompt_thread;
+    pthread_create(&prompt_thread, NULL, (void *) get_prompt, NULL);
 
 
-    pthread_t *message_thread = (pthread_t *) malloc(sizeof(pthread_t));
-    pthread_create(message_thread, NULL, (void *) get_message, NULL);
-    while (1) {
-
-    }
+    pthread_t message_thread;
+    pthread_create(&message_thread, NULL, (void *) get_message, NULL);
+    
+    pthread_join(prompt_thread, 0);
+    return 0;
 }
 
 void get_message() {
@@ -219,13 +219,18 @@ static void do_logout(struct message *msg) {
 
     set_str_val((char *) msg->source, current_client);
     send_message(msg, sockfd);
+
+    pthread_mutex_lock(&lock);
+    login = false;
+    connected = false;
     if (close(sockfd) < 0) {
         perror("close");
         exit(1);
     }
+    pthread_mutex_unlock(&lock);
+
     printf("\naccount %s have successfully logged out!\n\n", current_client);
     current_client = "";
-    login = false;
 }
 
 static void do_newsession(struct message *msg) {
