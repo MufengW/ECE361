@@ -108,7 +108,7 @@ static void process_input(struct message *msg, char *buf) {
             break;
         }
         case QUIT: {
-			   do_quit(msg);
+            do_quit(msg);
             break;
         }
         case MESSAGE: {
