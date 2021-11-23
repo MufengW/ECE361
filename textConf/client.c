@@ -16,7 +16,7 @@ void get_message() {
     struct message *msg = (struct message *) malloc(sizeof(struct message));
     while (1) {
         if (connected) {
-        recv_message(msg, sockfd);
+            recv_message(msg, sockfd);
             process_incoming_msg(msg);
         }
     }
@@ -41,7 +41,7 @@ void process_incoming_msg(struct message *msg) {
             process_joinsession(msg);
             break;
         case MESSAGE:
-        process_message(msg);
+            process_message(msg);
             break;
         default:
             break;
@@ -54,6 +54,7 @@ void get_prompt() {
     while (!exit) {
         exit = get_and_process_prompt(msg);
     }
+    free(msg);
 }
 
 bool get_and_process_prompt(struct message *msg) {
@@ -119,6 +120,9 @@ static bool process_input(struct message *msg, char *buf) {
             do_message(msg);
             break;
         }
+        case AGAIN: {
+            break;
+        }
         default: {
             break;
         }
@@ -136,6 +140,18 @@ enum type get_type(char *first_word) {
     if (strcmp(first_word, "/list") == 0) return QUERY;
     if (strcmp(first_word, "/quit") == 0) return QUIT;
 
+    if(first_word[0] == '/') {
+        printf("unrecognized command, do you want to send it as a message?(y/n)\n\n>> ");
+        char buf[MAX_DATA];
+        memset(buf, 0, MAX_DATA);
+        fgets(buf, MAX_DATA, stdin);
+        if((strcmp(buf,"y\n") == 0) || (strcmp(buf, "yes\n") == 0)) {
+            return MESSAGE;
+        } else {
+            printf("ignoring...\n\n");
+            return AGAIN;
+        }
+    }
     return MESSAGE;
 }
 
@@ -213,10 +229,8 @@ static void process_login(struct message *msg) {
         }
         case LO_NAK: {
             printf("%s", msg->data);
-            pthread_mutex_lock(&lock);
             login = false;
             connected = false;
-            pthread_mutex_unlock(&lock);
             close(sockfd);
             break;
         }

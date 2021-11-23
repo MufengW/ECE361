@@ -52,7 +52,8 @@ enum type {
     QU_ACK,
 
     //new added
-    QUIT
+    QUIT,
+    AGAIN
 };
 
 struct message {

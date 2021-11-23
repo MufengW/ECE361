@@ -198,8 +198,8 @@ static void do_joinsession(struct message *msg, int sockfd) {
     if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
         msg->msg_type = JN_NAK;
         set_str_val((char *)msg->data, (char *)already_in_a_session);
-    send_message(msg, sockfd);
-    return;
+        send_message(msg, sockfd);
+        return;
     }
     switch(stat) {
         case SESSION_NOT_EXIST: {
@@ -279,7 +279,7 @@ static void do_message(struct message *msg, int sockfd) {
         set_str_val((char *)msg->data, (char *)not_in_session);
         msg->msg_type = MESSAGE;
         send_message(msg, sockfd);
-    return;
+        return;
     }
     for (int i = 0; i < MAX_SESSION; ++i) {
         if (session_client_map[i][client_idx]) {
@@ -289,13 +289,14 @@ static void do_message(struct message *msg, int sockfd) {
     }
     char data[MAX_DATA * 2];
     char *client_session = session[session_idx];
+    const char *msg_data = strdup((char *)msg->data);
     printf("sending message to users in session %s...\n\n", client_session);
     // loop through session to get all client
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(session_client_map[session_idx][i]){
             if(fd_list[i] != sockfd){
             memset(data, 0, MAX_DATA * 2);
-            sprintf(data, "\n<message from %s>: %s\n", msg->source, msg->data);
+            sprintf(data, "\n<message from %s>: %s\n", msg->source, msg_data);
             set_str_val((char *)msg->data, data);
                 send_message(msg, fd_list[i]);
             }
