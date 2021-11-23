@@ -36,24 +36,23 @@
 #define MAX_SESSION 20
 
 enum type {
-    LOGIN = 1,
+    LOGIN = 0,
+    EXIT,
+    NEW_SESS,
+    JOIN,
+    LEAVE_SESS,
+    QUERY,
+    QUIT, //new added
+    MESSAGE,
+    AGAIN,
+
     LO_ACK,
     LO_NAK,
-    EXIT,
-    JOIN,
     JN_ACK,
     JN_NAK,
-    LEAVE_SESS,
-    NEW_SESS,
     NS_ACK,
     NS_NAK,
-    MESSAGE,
-    QUERY,
     QU_ACK,
-
-    //new added
-    QUIT,
-    AGAIN
 };
 
 struct message {

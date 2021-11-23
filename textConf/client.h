@@ -32,18 +32,31 @@ enum type get_type(char *first_word);
 bool get_and_process_prompt(struct message *msg);
 void connect_to_server(char *server_ip, char *server_port, int *sockfd);
 
-static void do_login(struct message *msg);
 static void process_login(struct message *msg);
-static void do_logout(struct message *msg);
-static void do_newsession(struct message *msg);
 static void process_newsession(struct message *msg);
-static void do_joinsession(struct message *msg);
 static void process_joinsession(struct message *msg);
-static void do_leavesession(struct message *msg);
-static void do_query(struct message *msg);
 static void process_query(struct message *msg);
-static void do_quit(struct message *msg);
-static void do_message(struct message *msg);
 static void process_message(struct message *msg);
 
+static void do_login(struct message *msg);
+static void do_logout(struct message *msg);
+static void do_newsession(struct message *msg);
+static void do_joinsession(struct message *msg);
+static void do_leavesession(struct message *msg);
+static void do_query(struct message *msg);
+static void do_quit(struct message *msg);
+static void do_message(struct message *msg);
+static void do_again(struct message *msg);
+
+static void (*do_input[20])(struct message *msg) = {
+    do_login,
+    do_logout,
+    do_newsession,
+    do_joinsession,
+    do_leavesession,
+    do_query,
+    do_quit,
+    do_message,
+    do_again
+};
 #endif /* CLIENT_H */

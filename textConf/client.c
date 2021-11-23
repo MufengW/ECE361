@@ -87,47 +87,9 @@ static bool process_input(struct message *msg, char *buf) {
     }
     set_str_val((char *)msg->data, buf);
     msg->msg_type = get_type(first_word);
-    switch (msg->msg_type) {
-        case LOGIN: {
-            do_login(msg);
-            break;
-        }
-        case EXIT: {
-            do_logout(msg);
-            break;
-        }
-        case JOIN: {
-            do_joinsession(msg);
-            break;
-        }
-        case LEAVE_SESS: {
-            do_leavesession(msg);
-            break;
-        }
-        case NEW_SESS: {
-            do_newsession(msg);
-            break;
-        }
-        case QUERY: {
-            do_query(msg);
-            break;
-        }
-        case QUIT: {
-            do_quit(msg);
-            return true;
-        }
-        case MESSAGE: {
-            do_message(msg);
-            break;
-        }
-        case AGAIN: {
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-    return false;
+    if((msg->msg_type) > AGAIN) ereport("unknown message type!");
+    (*do_input[msg->msg_type])(msg);
+    return (msg->msg_type == QUIT);
 }
 
 
@@ -148,7 +110,6 @@ enum type get_type(char *first_word) {
         if((strcmp(buf,"y\n") == 0) || (strcmp(buf, "yes\n") == 0)) {
             return MESSAGE;
         } else {
-            printf("ignoring...\n\n");
             return AGAIN;
         }
     }
@@ -449,6 +410,10 @@ static void do_quit(struct message *msg) {
     send_message(msg, sockfd);
     printf("\ngoodbye!\n\n");
     return;
+}
+
+static void do_again(struct message *msg) {
+    printf("ignoring...\n");
 }
 
 void detect_extra_input() {
