@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,17 +43,19 @@ enum type {
     JOIN,
     LEAVE_SESS,
     QUERY,
-    QUIT, //new added
+    QUIT, // new added
     MESSAGE,
-    AGAIN,
+    AGAIN, // new added
 
     LO_ACK,
     LO_NAK,
-    JN_ACK,
-    JN_NAK,
+    EXIT_DONE, // new added
     NS_ACK,
     NS_NAK,
+    JN_ACK,
+    JN_NAK,
     QU_ACK,
+    MESSAGE_PRINT // new added
 };
 
 struct message {
@@ -68,6 +71,6 @@ void *get_in_addr(struct sockaddr *sa);
 void serialize(struct message *msg, char *buf);
 void deserialize(struct message *result, char *buf);
 void send_message(struct message *msg, int sockfd);
-void recv_message(struct message *msg, int sockfd);
+bool recv_message(struct message *msg, int sockfd);
 void set_str_val(char* src, char *dst);
 #endif /* UTILS_H */

@@ -114,9 +114,10 @@ void send_message(struct message *msg, int sockfd) {
         perror("send");
         exit(1);
     }
+    printf("send, fd = %d\n", sockfd);
 }
 
-void recv_message(struct message *msg, int sockfd) {
+bool recv_message(struct message *msg, int sockfd) {
     memset(msg, 0, sizeof(struct message));
     char buf[sizeof(struct message) + sizeof(int) * 2];
     int rt = recv(sockfd, buf, MAX_DATA, 0);
@@ -127,6 +128,8 @@ void recv_message(struct message *msg, int sockfd) {
     if(rt > 0) {
         deserialize(msg, buf);
     }
+//    printf("recv, fd = %d\n", sockfd);
+    return (rt != 0);
 }
 
 void set_str_val(char* src, char *dst) {

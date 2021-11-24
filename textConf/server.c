@@ -2,14 +2,14 @@
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
-    read_credentials();
+    init_global();
+    signal(SIGINT, int_handler);
     if (argc != 2) {
         printf("\nusage: server <TCP port number to listen on>\n\n");
         exit(1);
     }
     char *port = argv[1];
 
-    init_global();
     int listen_sockfd;
     start_listen(port, &listen_sockfd);
 
@@ -21,6 +21,19 @@ int main(int argc, char *argv[]) {
         pthread_create(&new_thread, NULL, (void *) recv_main_loop, recv_sockfd);
     }
     return 0;
+}
+
+static void int_handler() {
+    printf("\ninterrupt detected, quitting...\n");
+    struct message *msg = (struct message *) malloc(sizeof(struct message));
+    msg->msg_type = QUIT;
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        if(fd_list[i] != -1) {
+            set_str_val((char *)msg->source, all_client[i]);
+            do_quit(msg, fd_list[i]);
+        }
+    }
+    exit(0);
 }
 
 void read_credentials() {
@@ -38,72 +51,35 @@ void recv_main_loop(int *recv_sockfd) {
     free(recv_sockfd);
     struct message *msg = (struct message *) malloc(sizeof(struct message));
 
-    bool exit = false;
-    while (!exit) {
+    bool end = false;
+    while (!end) {
         memset(msg, 0, sizeof(*msg));
-        exit = process_message(msg, sockfd);
+    if(recv_message(msg, sockfd)) {
+        if((msg->msg_type) >= LO_ACK) ereport("unknown message type!");
+        end = (msg->msg_type == EXIT || msg->msg_type == QUIT);
+        (*process_message[msg->msg_type])(msg, sockfd);
+    }
     }
     free(msg);
     pthread_exit(0);
 }
 
 static void init_global() {
+    read_credentials();
     int i, j;
     for (i = 0; i < MAX_SESSION; ++i) {
         session[i] = NULL;
     }
     for (j = 0; j < MAX_ACCOUNT; ++j) {
         all_client[j] = NULL;
-        login_client[i] = false;
-        fd_list[i] = -1;
+        login_client[j] = false;
+        fd_list[j] = -1;
     }
     for (i = 0; i < MAX_SESSION + 1; ++i) {
         for (j = 0; j < MAX_ACCOUNT; ++j) {
             session_client_map[i][j] = false;
         }
     }
-}
-
-static bool process_message(struct message *msg, int sockfd) {
-    recv_message(msg, sockfd);
-    switch (msg->msg_type) {
-        case LOGIN: {
-            do_login(msg, sockfd);
-            break;
-        }
-        case EXIT: {
-            do_logout(msg, sockfd);
-            return true;
-        }
-        case JOIN: {
-            do_joinsession(msg, sockfd);
-            break;
-        }
-        case LEAVE_SESS: {
-            do_leavesession(msg, sockfd);
-            break;
-        }
-        case NEW_SESS: {
-            do_newsession(msg, sockfd);
-            break;
-        }
-        case QUERY: {
-            do_query(msg, sockfd);
-            break;
-        }
-        case QUIT: {
-               do_quit(msg, sockfd);
-            return true;
-        }
-        case MESSAGE: {
-            do_message(msg, sockfd);
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-    return false;
 }
 
 static void do_login(struct message *msg, int sockfd) {
@@ -145,12 +121,15 @@ static void do_login(struct message *msg, int sockfd) {
 
 static void do_logout(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
+    msg->msg_type = EXIT_DONE;
+    send_message(msg, sockfd);
     if (close(sockfd) < 0) {
         perror("close");
         exit(1);
     }
     int client_idx = find_client(client_id);
     login_client[client_idx] = false;
+    fd_list[client_idx] = -1;
 }
 
 static void do_newsession(struct message *msg, int sockfd) {
@@ -162,8 +141,8 @@ static void do_newsession(struct message *msg, int sockfd) {
     if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
         msg->msg_type = NS_NAK;
         set_str_val((char *)msg->data, (char *)already_in_a_session);
-    send_message(msg, sockfd);
-    return;
+        send_message(msg, sockfd);
+        return;
     }
     switch(stat) {
         case SESSION_NOT_EXIST: {
@@ -274,10 +253,10 @@ static void do_message(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
     int client_idx = find_client(client_id);
     int session_idx = -1;
+    msg->msg_type = MESSAGE_PRINT;
     if (session_client_map[MAX_SESSION][client_idx]) {
         // not in any session
         set_str_val((char *)msg->data, (char *)not_in_session);
-        msg->msg_type = MESSAGE;
         send_message(msg, sockfd);
         return;
     }
@@ -295,9 +274,9 @@ static void do_message(struct message *msg, int sockfd) {
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(session_client_map[session_idx][i]){
             if(fd_list[i] != sockfd){
-            memset(data, 0, MAX_DATA * 2);
-            sprintf(data, "\n<message from %s>: %s\n", msg->source, msg_data);
-            set_str_val((char *)msg->data, data);
+                memset(data, 0, MAX_DATA * 2);
+                sprintf(data, "\n<message from %s>: %s\n", msg->source, msg_data);
+                set_str_val((char *)msg->data, data);
                 send_message(msg, fd_list[i]);
             }
         }
@@ -319,7 +298,7 @@ void add_account(char *client_id, int sockfd) {
     }
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(all_client[i] == NULL) {
-        fd_list[i] = sockfd;
+            fd_list[i] = sockfd;
             all_client[i] = strdup(client_id);
             login_client[i] = true;
             session_client_map[MAX_SESSION][i] = true; // last row of the map is client that has not joined any session
@@ -336,6 +315,7 @@ void remove_account(char *client_id) {
         ereport("client to remove not found!");
     }
     all_client[client_idx] = NULL;
+    fd_list[client_idx] = -1;
     for(int i = 0; i < MAX_SESSION; ++i) {
         bool empty = true;
         if(session_client_map[i][client_idx]) {

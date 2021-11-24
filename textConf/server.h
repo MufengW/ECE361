@@ -43,10 +43,11 @@ int thread_count = 0;
 int total_account = 0;
 int session_count = 0;
 
+static void int_handler();
+
 static void init_global();
 void recv_main_loop(int *listen_sockfd);
 static void read_credentials();
-static bool process_message(struct message *msg, int sockfd);
 
 static void do_login(struct message *msg, int sockfd);
 static void do_logout(struct message *msg, int sockfd);
@@ -69,4 +70,16 @@ void client_join_session(char *client_id, char *session_id);
 static enum session_stat check_session(char *session_id);
 
 void client_join_session(char *client_id, char *session_id);
+
+static void (*process_message[20])(struct message *msg, int sockfd) = {
+    do_login, // LOGIN
+    do_logout, // EXIT,
+    do_newsession, // NEW_SESS
+    do_joinsession, // JOIN
+    do_leavesession, // LEAVE_SESS
+    do_query, // QUERY
+    do_quit, //QUIT
+    do_message //MESSAGE
+};
+
 #endif /* SERVER_H */

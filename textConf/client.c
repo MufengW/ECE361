@@ -1,50 +1,31 @@
 #include "client.h"
 
 int main() {
-    pthread_t prompt_thread;
+    signal(SIGINT, int_handler);
+
     pthread_create(&prompt_thread, NULL, (void *) get_prompt, NULL);
-
-
-    pthread_t message_thread;
     pthread_create(&message_thread, NULL, (void *) get_message, NULL);
     
     pthread_join(prompt_thread, 0);
     return 0;
 }
 
+static void int_handler() {
+    printf("\ninterrupt detected, quitting...\n");
+    struct message *msg = (struct message *) malloc(sizeof(struct message));
+    msg->msg_type = QUIT;
+    do_quit(msg);
+    exit(0);
+}
+
 void get_message() {
     struct message *msg = (struct message *) malloc(sizeof(struct message));
     while (1) {
-        if (connected) {
-            recv_message(msg, sockfd);
-            process_incoming_msg(msg);
+        if (connected && sockfd != -1) {
+            if(!recv_message(msg, sockfd)) continue;
+            if(!connected) return;
+                (*do_input[msg->msg_type])(msg);
         }
-    }
-}
-
-void process_incoming_msg(struct message *msg) {
-    if(!connected) return;
-    switch (msg->msg_type) {
-        case LO_ACK:
-        case LO_NAK:
-            process_login(msg);
-            break;
-        case NS_ACK:
-        case NS_NAK:
-            process_newsession(msg);
-            break;
-        case QU_ACK:
-            process_query(msg);
-            break;
-        case JN_ACK:
-        case JN_NAK:
-            process_joinsession(msg);
-            break;
-        case MESSAGE:
-            process_message(msg);
-            break;
-        default:
-            break;
     }
 }
 
@@ -87,7 +68,7 @@ static bool process_input(struct message *msg, char *buf) {
     }
     set_str_val((char *)msg->data, buf);
     msg->msg_type = get_type(first_word);
-    if((msg->msg_type) > AGAIN) ereport("unknown message type!");
+    if((msg->msg_type) >= LO_ACK) ereport("unknown message type!");
     (*do_input[msg->msg_type])(msg);
     return (msg->msg_type == QUIT);
 }
@@ -214,9 +195,18 @@ static void do_logout(struct message *msg) {
     }
     detect_extra_input();
 
+    pthread_mutex_lock(&lock_logout);
+    done_logout = false;
+    pthread_mutex_unlock(&lock_logout);
     set_str_val((char *) msg->source, current_client);
     send_message(msg, sockfd);
+    // need to wait for process ack
+    while(!done_logout) {
+        pthread_yield();
+    }
+}
 
+static void process_logout(struct message *msg){
     pthread_mutex_lock(&lock);
     login = false;
     connected = false;
@@ -227,6 +217,11 @@ static void do_logout(struct message *msg) {
     }
     printf("\naccount %s have successfully logged out!\n\n", current_client);
     current_client = "";
+    sockfd = -1;
+    // logout command finished
+    pthread_mutex_lock(&lock_logout);
+    done_logout = true;
+    pthread_mutex_unlock(&lock_logout);
 }
 
 static void do_newsession(struct message *msg) {
@@ -400,6 +395,14 @@ static void process_message(struct message *msg) {
 }
 
 static void do_quit(struct message *msg) {
+    if(pthread_self() == message_thread) {
+        // special case! server down!
+        printf("server down!\n");
+        exit(0);
+    }
+    if(pthread_self() == prompt_thread) {
+        printf("normal\n");
+    }
     if (!login) {
         printf("\ngoodbye!\n\n");
         return;
