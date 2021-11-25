@@ -39,6 +39,8 @@ char credentials[MAX_ACCOUNT][MAX_NAME];
 int total_credentials = 0;
 
 char *session[MAX_SESSION];
+int client_count[MAX_SESSION];
+
 bool session_client_map[MAX_SESSION + 1][MAX_ACCOUNT];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int thread_count = 0;

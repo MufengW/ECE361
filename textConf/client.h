@@ -18,6 +18,7 @@ bool done_newsession;
 
 pthread_mutex_t lock_joinsession = PTHREAD_MUTEX_INITIALIZER;
 bool done_joinsession;
+bool update_session;
 
 pthread_mutex_t lock_query = PTHREAD_MUTEX_INITIALIZER;
 bool done_query;

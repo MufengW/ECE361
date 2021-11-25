@@ -273,7 +273,7 @@ static void process_newsession(struct message *msg) {
             char *session_id = (char *) msg->data;
             printf("\nnew session %s created!\n", session_id);
             set_str_val(current_session, session_id);
-        in_session = true;
+            in_session = true;
             break;
         }
         case NS_NAK: {
@@ -321,20 +321,24 @@ static void do_joinsession(struct message *msg) {
     while(!done_joinsession) {
         pthread_yield();
     }
+    if(update_session) {
+        memset(current_session, 0, MAX_DATA);
+        set_str_val(current_session, session_id);
+    }
 
 }
 
 static void process_joinsession(struct message *msg) {
     switch (msg->msg_type) {
         case JN_ACK: {
-            char *session_id = (char *) msg->data;
-            printf("\njoining session %s...\n", session_id);
-            set_str_val(current_session, session_id);
-        in_session = true;
+            printf("%s",msg->data);
+            in_session = true;
+        update_session = true;
             break;
         }
         case JN_NAK: {
             printf("%s", msg->data);
+        update_session = false;
             break;
         }
         default: {
@@ -357,10 +361,11 @@ static void do_leavesession(struct message *msg) {
     detect_extra_input();
 
     set_str_val((char *) msg->source, current_client);
+    printf("\nclient %s has left the session %s.\n", current_client, current_session);
+
     memset(current_session, 0, MAX_DATA);
     in_session = false;
     send_message(msg, sockfd);
-    printf("\nclient %s has left all the sessions!\n", current_client);
 }
 
 static void do_query(struct message *msg) {
@@ -405,7 +410,11 @@ static void do_message(struct message *msg) {
 }
 
 static void process_message(struct message *msg) {
-    printf("%s%s:$ ", msg->data, current_client);
+    if(in_session) {
+        printf("%s[%s]%s:$ ",msg->data, current_session, current_client);
+    } else {
+        printf("%s%s:$ ", msg->data, current_client);
+    }
     fflush(stdout);
 }
 

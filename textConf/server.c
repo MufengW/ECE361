@@ -74,6 +74,7 @@ static void init_global() {
         login_client[j] = false;
         fd_list[j] = -1;
         client_in_session[j] = -1;
+    client_count[j] = 0;
     }
     for (i = 0; i < MAX_SESSION + 1; ++i) {
         for (j = 0; j < MAX_ACCOUNT; ++j) {
@@ -141,13 +142,6 @@ static void do_newsession(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
     enum session_stat stat = check_session(session_id);
 
-    // disable client from joining multiple sessions, will add this feature to lab5.
-    if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
-        msg->msg_type = NS_NAK;
-        set_str_val((char *)msg->data, (char *)already_in_a_session);
-        send_message(msg, sockfd);
-        return;
-    }
     switch(stat) {
         case SESSION_NOT_EXIST: {
             msg->msg_type = NS_ACK;
@@ -177,13 +171,6 @@ static void do_joinsession(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
     enum session_stat stat = check_session(session_id);
 
-    // disable client from joining multiple sessions, will add this feature to lab5.
-    if(!session_client_map[MAX_SESSION][find_client(client_id)]) {
-        msg->msg_type = JN_NAK;
-        set_str_val((char *)msg->data, (char *)already_in_a_session);
-        send_message(msg, sockfd);
-        return;
-    }
     switch(stat) {
         case SESSION_NOT_EXIST: {
             msg->msg_type = JN_NAK;
@@ -194,13 +181,17 @@ static void do_joinsession(struct message *msg, int sockfd) {
         case NO_MORE_SESSION: { // when doing join, doesn't matter whether session space is full
             int client_idx = find_client(client_id);
             int session_idx = find_session(session_id);
-            if (session_client_map[session_idx][client_idx]) { // client already in session
-                msg->msg_type = JN_NAK;
-                set_str_val((char *) msg->data, (char *) client_already_in_session);
-                break;
-            }
             msg->msg_type = JN_ACK;
-            client_join_session(client_id, session_id);
+        bool back_to_session = session_client_map[session_idx][client_idx];
+        client_join_session(client_id, session_id);
+        char tmp[MAX_DATA];
+        memset(tmp, 0, MAX_DATA);
+        if(back_to_session) {
+            sprintf(tmp, "returnning to session %s...\n", session_id);
+        } else {
+            sprintf(tmp, "joining session %s...\n", session_id);
+        }
+        set_str_val((char *) msg->data, tmp);
             break;
         }
         default: {
@@ -213,28 +204,29 @@ static void do_joinsession(struct message *msg, int sockfd) {
 static void do_leavesession(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
     int client_idx = find_client(client_id);
-    for (int i = 0; i < MAX_SESSION; ++i) {
-        char tmp_msg[MAX_DATA];
-        sprintf(tmp_msg, "user %s has left this session.\n", client_id);
-        set_str_val((char *)msg->data, tmp_msg);
-        do_message(msg, sockfd);
+    int session_idx = client_in_session[client_idx];
+    char tmp_msg[MAX_DATA];
+    sprintf(tmp_msg, "user %s has left this session.\n", client_id);
+    set_str_val((char *)msg->data, tmp_msg);
+    do_message(msg, sockfd);
 
-        bool empty = true;
-        if (session_client_map[i][client_idx]) {
-            session_client_map[i][client_idx] = false;
-        }
-        for (int j = 0; j < MAX_ACCOUNT; ++j) {
-            if (session_client_map[i][j]) {
-                empty = false;
-                break;
-            }
-        }
-        if (empty && session[i] != NULL) {
-            session[i] = NULL;
-        --session_count;
+    bool empty = true;
+    if (session_client_map[session_idx][client_idx]) {
+        session_client_map[session_idx][client_idx] = false;
+    }
+    for (int j = 0; j < MAX_ACCOUNT; ++j) {
+        if (session_client_map[session_idx][j]) {
+            empty = false;
+            break;
         }
     }
+    if (empty && session[session_idx] != NULL) {
+        session[session_idx] = NULL;
+        --session_count;
+    }
+
     client_in_session[client_idx] = -1;
+    --client_count[session_idx];
     session_client_map[MAX_SESSION][client_idx] = true;
 }
 
@@ -244,16 +236,25 @@ static void do_query(struct message *msg, int sockfd) {
     char *tmp_client;
     char data[MAX_DATA];
     memset(data, 0, MAX_DATA);
+    sprintf(data + strlen(data), "\nin session:");
     for (int i = 0; i < MAX_SESSION; ++i) {
         if (session[i] != NULL) {
             tmp_session = session[i];
-            sprintf(data + strlen(data), "\nsession %s:\n", tmp_session);
+            sprintf(data + strlen(data), "\n[%s]:\n  ", tmp_session);
             for (int j = 0; j < MAX_ACCOUNT; ++j) {
                 if (session_client_map[i][j]) {
                     tmp_client = all_client[j];
-                    sprintf(data + strlen(data), "\tclient %s\n", tmp_client);
+                    sprintf(data + strlen(data), "%s\n  ", tmp_client);
                 }
             }
+        }
+    }
+
+    sprintf(data + strlen(data), "\nnot in session:\n  ");
+    for(int j = 0; j < MAX_ACCOUNT; ++j) {
+        if(session_client_map[MAX_SESSION][j]) {
+            tmp_client = all_client[j];
+            sprintf(data + strlen(data), "%s\n  ", tmp_client);
         }
     }
     set_str_val((char *) msg->data, data);
@@ -263,27 +264,21 @@ static void do_query(struct message *msg, int sockfd) {
 static void do_message(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
     int client_idx = find_client(client_id);
-    int session_idx = -1;
+    int session_idx = client_in_session[client_idx];
     msg->msg_type = MESSAGE_PRINT;
-    if (session_client_map[MAX_SESSION][client_idx]) {
+
+    if(session_idx == -1) {
         // not in any session
         set_str_val((char *)msg->data, (char *)not_in_session);
         send_message(msg, sockfd);
         return;
     }
-    for (int i = 0; i < MAX_SESSION; ++i) {
-        if (session_client_map[i][client_idx]) {
-            session_idx = i;
-            break;
-        }
-    }
     char data[MAX_DATA * 2];
-    //char *client_session = session[session_idx];
     const char *msg_data = strdup((char *)msg->data);
     //printf("sending message to users in session %s...\n\n", client_session);
     // loop through session to get all client
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
-        if(session_client_map[session_idx][i]){
+        if(session_client_map[session_idx][i] && client_in_session[i] == session_idx){
             if(fd_list[i] != sockfd && fd_list[i] != -1){
                 memset(data, 0, MAX_DATA * 2);
                 sprintf(data, "\n<message from %s>: %s\n", msg->source, msg_data);
@@ -405,15 +400,16 @@ static enum session_stat check_session(char *session_id) {
 }
 
 void client_join_session(char *client_id, char *session_id) {
-    int session_idx = find_session(session_id);
+    int join_session_idx = find_session(session_id);
     int client_idx = find_client(client_id);
-    session_client_map[session_idx][client_idx] = true;
+    session_client_map[join_session_idx][client_idx] = true;
     session_client_map[MAX_SESSION][client_idx] = false;
-    client_in_session[client_idx] = session_idx;
+    client_in_session[client_idx] = join_session_idx;
+    ++client_count[join_session_idx];
 }
 
 void print_stat() {
-    printf("\n --------------- print begin -------------\n\n");
+    printf("\n --------------- print begin ---------------\n\n");
     printf("total client count: \t%d\n\n", total_account);
     printf("total session count: \t%d\n\n", session_count);
     printf("map:\n\t");
@@ -448,10 +444,16 @@ void print_stat() {
     }
     printf("\n\n");
 
+    printf("client_count:\n");
+    for(int i = 0; i < MAX_SESSION; ++i) {
+        printf("%s:%d ", session[i], client_count[i]);
+    }
+    printf("\n\n");
+
     printf("fd_list:\n");
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         printf("%d:%d ", i, fd_list[i]);
     }
     
-    printf("\n\n --------- print done --------------\n");
+    printf("\n\n --------------- print done ---------------\n\n");
 }
