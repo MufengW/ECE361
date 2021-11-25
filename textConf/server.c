@@ -416,19 +416,25 @@ void print_stat() {
     printf("\n --------------- print begin -------------\n\n");
     printf("total client count: \t%d\n\n", total_account);
     printf("total session count: \t%d\n\n", session_count);
-    printf("map:\n");
+    printf("map:\n\t");
+    for(int i = 0; i < MAX_ACCOUNT; ++i){
+        printf("%s\t", (all_client[i] == NULL ? "null":all_client[i]));
+    }
+    printf("\n");
     for(int i = 0; i < MAX_SESSION + 1; ++i) {
+        if(i < MAX_SESSION) printf("%s\t", (session[i] == NULL ? "null":session[i]));
+        else printf("%s\t","others");
         for(int j = 0; j < MAX_ACCOUNT; ++j) {
-            printf("%d ",session_client_map[i][j]);
+            printf("%d\t",session_client_map[i][j]);
         }
-        printf("\n\n");
+        printf("\n");
     }
 
     printf("client:\n");
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         printf("%d:%s ", i, all_client[i]);
     }
-    printf("\n");
+    printf("\n\n");
 
     printf("session: \n");
     for(int i = 0; i < MAX_SESSION; ++i) {

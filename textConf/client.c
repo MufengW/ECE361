@@ -173,7 +173,10 @@ static void process_login(struct message *msg) {
         if(strcmp((char *)msg->data, "") != 0) {
             set_str_val(current_session, (char *)msg->data);
             in_session = true;
-        }
+        } else {
+            memset(current_session, 0, MAX_DATA);
+            in_session = false;
+    }
             set_str_val(current_client, (char *)msg->source);
             break;
         }
