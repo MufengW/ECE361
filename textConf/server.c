@@ -10,13 +10,11 @@ int main(int argc, char *argv[]) {
     }
     char *port = argv[1];
 
-    int listen_sockfd;
     start_listen(port, &listen_sockfd);
 
     while (total_account < MAX_ACCOUNT) {
         int *recv_sockfd = malloc(sizeof(int));
         *recv_sockfd = accept_conn(listen_sockfd);
-
         pthread_t new_thread;
         pthread_create(&new_thread, NULL, (void *) recv_main_loop, recv_sockfd);
     }
@@ -30,9 +28,11 @@ static void int_handler() {
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(fd_list[i] != -1) {
             set_str_val((char *)msg->source, all_client[i]);
+            send_message(msg, fd_list[i]);
             do_quit(msg, fd_list[i]);
         }
     }
+    close(listen_sockfd);
     exit(0);
 }
 
@@ -54,14 +54,12 @@ void recv_main_loop(int *recv_sockfd) {
     bool end = false;
     while (!end) {
         memset(msg, 0, sizeof(*msg));
-    if(recv_message(msg, sockfd)) {
+        if(!recv_message(msg, sockfd)) continue;
         if((msg->msg_type) >= LO_ACK) ereport("unknown message type!");
         end = (msg->msg_type == EXIT || msg->msg_type == QUIT);
         (*process_message[msg->msg_type])(msg, sockfd);
     }
-    }
     free(msg);
-    pthread_exit(0);
 }
 
 static void init_global() {
@@ -267,9 +265,9 @@ static void do_message(struct message *msg, int sockfd) {
         }
     }
     char data[MAX_DATA * 2];
-    char *client_session = session[session_idx];
+    //char *client_session = session[session_idx];
     const char *msg_data = strdup((char *)msg->data);
-    printf("sending message to users in session %s...\n\n", client_session);
+    //printf("sending message to users in session %s...\n\n", client_session);
     // loop through session to get all client
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(session_client_map[session_idx][i]){
@@ -291,7 +289,7 @@ static void do_quit(struct message *msg, int sockfd) {
 
 void add_account(char *client_id, int sockfd) {
     int client_idx = find_client(client_id);
-    if(client_idx != -1) { // account already exits, which implies this account had logged out before.
+    if(client_idx != -1) { // account already exists, which implies this account had logged out before.
         fd_list[client_idx] = sockfd;
         login_client[client_idx] = true;
         return;

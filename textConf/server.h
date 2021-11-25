@@ -29,6 +29,7 @@ const char *already_in_a_session = "\nclient is already in a session!\n\n";
 const char *client_already_in_session = "\nclient is already in this session!\n\n";
 const char *not_in_session = "\nyou are not in any session!\n\n";
 
+int listen_sockfd;
 char *all_client[MAX_ACCOUNT];
 int fd_list[MAX_ACCOUNT];
 bool login_client[MAX_ACCOUNT];

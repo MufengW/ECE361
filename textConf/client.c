@@ -57,13 +57,13 @@ void get_input(char *buf) {
 static bool process_input(struct message *msg, char *buf) {
     char *data = strdup(buf); // make a copy of original data to avoid overwrite
     if (strlen(data) == 0) {
-        printf("\ndata empty, try input again!\n\n");
+        printf("\ndata empty, try input again!\n");
         return false;
     }
     char delim[] = " \n\t\v\f\r";
     char *first_word = strtok(data, delim);
     if (first_word == NULL) {
-        printf("\ndata empty, try input again!\n\n");
+        printf("\ndata empty, try input again!\n");
         return false;
     }
     set_str_val((char *)msg->data, buf);
@@ -101,6 +101,7 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
     struct addrinfo hints, *servinfo;
     char s[INET_ADDRSTRLEN];
     int rv;
+    int yes = 1;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -114,6 +115,7 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
         perror("client: socket");
         exit(1);
     }
+    setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
     if (connect(*sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
         close(*sockfd);
         perror("client: connect");
@@ -125,7 +127,7 @@ void connect_to_server(char *server_ip, char *server_port, int *sockfd) {
 
 static void do_login(struct message *msg) {
     if (login) {
-        printf("\nyou have already logged in to %s on this machine!\n\n", current_client);
+        printf("\nyou have already logged in to %s on this machine!\n", current_client);
         return;
     }
     pthread_mutex_lock(&lock_login);
@@ -144,10 +146,10 @@ static void do_login(struct message *msg) {
 
     detect_extra_input();
 
-    if (!connected) {
+//    if (!connected) {
         connect_to_server(server_ip, server_port, &sockfd);
         connected = true;
-    }
+//    }
 
     set_str_val((char *) msg->data, password);
     msg->size = strlen((const char *) msg->data);
@@ -162,7 +164,7 @@ static void do_login(struct message *msg) {
 static void process_login(struct message *msg) {
     switch (msg->msg_type) {
         case LO_ACK: {
-            printf("\nlogin successful!\n\n");
+            printf("\nlogin successful!\n");
             login = true;
 
             current_client = (char *) malloc(sizeof(char) * MAX_NAME);
@@ -190,7 +192,7 @@ static void process_login(struct message *msg) {
 
 static void do_logout(struct message *msg) {
     if (!login) {
-        printf("\nyou have not logged in to any account\n\n");
+        printf("\nyou have not logged in to any account\n");
         return;
     }
     detect_extra_input();
@@ -215,7 +217,7 @@ static void process_logout(struct message *msg){
         perror("close");
         exit(1);
     }
-    printf("\naccount %s have successfully logged out!\n\n", current_client);
+    printf("\naccount %s have successfully logged out!\n", current_client);
     current_client = "";
     sockfd = -1;
     // logout command finished
@@ -226,7 +228,7 @@ static void process_logout(struct message *msg){
 
 static void do_newsession(struct message *msg) {
     if (!login) {
-        printf("\nyou need to login first!\n\n");
+        printf("\nyou need to login first!\n");
         return;
     }
 
@@ -260,7 +262,7 @@ static void process_newsession(struct message *msg) {
     switch (msg->msg_type) {
         case NS_ACK: {
             char *session_id = (char *) msg->data;
-            printf("\nnew session %s created!\n\n", session_id);
+            printf("\nnew session %s created!\n", session_id);
             current_session = session_id;
             break;
         }
@@ -282,7 +284,7 @@ static void process_newsession(struct message *msg) {
 
 static void do_joinsession(struct message *msg) {
     if (!login) {
-        printf("\nyou need to login first!\n\n");
+        printf("\nyou need to login first!\n");
         return;
     }
 
@@ -316,7 +318,7 @@ static void process_joinsession(struct message *msg) {
     switch (msg->msg_type) {
         case JN_ACK: {
             char *session_id = (char *) msg->data;
-            printf("\njoining session %s...\n\n", session_id);
+            printf("\njoining session %s...\n", session_id);
             current_session = session_id;
             break;
         }
@@ -338,19 +340,19 @@ static void process_joinsession(struct message *msg) {
 
 static void do_leavesession(struct message *msg) {
     if (!login) {
-        printf("\nyou need to login first!\n\n");
+        printf("\nyou need to login first!\n");
         return;
     }
     detect_extra_input();
 
     set_str_val((char *) msg->source, current_client);
     send_message(msg, sockfd);
-    printf("\nclient %s has left all the sessions!\n\n", current_client);
+    printf("\nclient %s has left all the sessions!\n", current_client);
 }
 
 static void do_query(struct message *msg) {
     if (!login) {
-        printf("\nyou need to login first!\n\n");
+        printf("\nyou need to login first!\n");
         return;
     }
 
@@ -380,13 +382,13 @@ static void process_query(struct message *msg) {
 
 static void do_message(struct message *msg) {
     if (!login) {
-        printf("\nyou need to login first!\n\n");
+        printf("\nyou need to login first!\n");
         return;
     }
 
     set_str_val((char *)msg->source, current_client);
     send_message(msg, sockfd);
-    printf("\nyour message has been sent\n\n");
+    //printf("\nyour message has been sent\n");
 }
 
 static void process_message(struct message *msg) {
@@ -397,11 +399,8 @@ static void process_message(struct message *msg) {
 static void do_quit(struct message *msg) {
     if(pthread_self() == message_thread) {
         // special case! server down!
-        printf("server down!\n");
+        printf("server down, quitting...\n");
         exit(0);
-    }
-    if(pthread_self() == prompt_thread) {
-        printf("normal\n");
     }
     if (!login) {
         printf("\ngoodbye!\n\n");
@@ -423,6 +422,6 @@ void detect_extra_input() {
     char delim[] = " \n\t\v\f\r";
     char *extra_input = strtok(NULL, delim);
     if (extra_input) {
-        printf("\nextra input dected and ignored...\n\n");
+        printf("\nextra input dected and ignored...\n");
     }
 }

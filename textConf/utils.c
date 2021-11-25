@@ -2,7 +2,7 @@
 
 void start_listen(char *port, int *sockfd) {
     struct addrinfo hints, *servinfo;
-
+    int yes = 1;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -17,6 +17,7 @@ void start_listen(char *port, int *sockfd) {
         perror("server: socket");
         exit(1);
     }
+    setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
     if(bind(*sockfd, servinfo->ai_addr, servinfo->ai_addrlen) == -1) {
         close(*sockfd);
         perror("server: bind");
@@ -103,6 +104,8 @@ int accept_conn(int sockfd) {
         exit(1);
     }
     inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof(s));
+    printf("\ngot connection from %s...\n", s);
+    fflush(stdout);
     return new_fd;
 }
 
@@ -114,7 +117,8 @@ void send_message(struct message *msg, int sockfd) {
         perror("send");
         exit(1);
     }
-    printf("send, fd = %d\n", sockfd);
+//    printf("send, fd = %d\nmsg = %s\n", sockfd, msg->data);
+    fflush(stdout);
 }
 
 bool recv_message(struct message *msg, int sockfd) {
