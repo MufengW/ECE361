@@ -24,8 +24,9 @@ bool done_query;
 
 bool connected = false;
 bool login = false;
-char *current_client = "";
-char *current_session = "";
+bool in_session = false;
+char current_client[MAX_DATA];
+char current_session[MAX_DATA];
 int sockfd;
 
 static void int_handler();

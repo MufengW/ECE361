@@ -58,6 +58,7 @@ void recv_main_loop(int *recv_sockfd) {
         if((msg->msg_type) >= LO_ACK) ereport("unknown message type!");
         end = (msg->msg_type == EXIT || msg->msg_type == QUIT);
         (*process_message[msg->msg_type])(msg, sockfd);
+    print_stat();
     }
     free(msg);
 }
@@ -72,6 +73,7 @@ static void init_global() {
         all_client[j] = NULL;
         login_client[j] = false;
         fd_list[j] = -1;
+        client_in_session[j] = -1;
     }
     for (i = 0; i < MAX_SESSION + 1; ++i) {
         for (j = 0; j < MAX_ACCOUNT; ++j) {
@@ -88,6 +90,10 @@ static void do_login(struct message *msg, int sockfd) {
         case ACCOUNT_VALID: {
             msg->msg_type = LO_ACK;
             add_account(client_id, sockfd);
+            int client_idx = find_client(client_id);
+            int session_idx = client_in_session[client_idx];
+            if(session_idx != -1) set_str_val((char *)msg->data, session[session_idx]);
+            else set_str_val((char *)msg->data, "");
             break;
         }
         case ACCOUNT_NOT_EXIST: {
@@ -208,6 +214,11 @@ static void do_leavesession(struct message *msg, int sockfd) {
     char *client_id = (char *) msg->source;
     int client_idx = find_client(client_id);
     for (int i = 0; i < MAX_SESSION; ++i) {
+        char tmp_msg[MAX_DATA];
+        sprintf(tmp_msg, "user %s has left this session.\n", client_id);
+        set_str_val((char *)msg->data, tmp_msg);
+        do_message(msg, sockfd);
+
         bool empty = true;
         if (session_client_map[i][client_idx]) {
             session_client_map[i][client_idx] = false;
@@ -218,10 +229,12 @@ static void do_leavesession(struct message *msg, int sockfd) {
                 break;
             }
         }
-        if (empty) {
+        if (empty && session[i] != NULL) {
             session[i] = NULL;
+        --session_count;
         }
     }
+    client_in_session[client_idx] = -1;
     session_client_map[MAX_SESSION][client_idx] = true;
 }
 
@@ -271,7 +284,7 @@ static void do_message(struct message *msg, int sockfd) {
     // loop through session to get all client
     for(int i = 0; i < MAX_ACCOUNT; ++i) {
         if(session_client_map[session_idx][i]){
-            if(fd_list[i] != sockfd){
+            if(fd_list[i] != sockfd && fd_list[i] != -1){
                 memset(data, 0, MAX_DATA * 2);
                 sprintf(data, "\n<message from %s>: %s\n", msg->source, msg_data);
                 set_str_val((char *)msg->data, data);
@@ -312,6 +325,7 @@ void remove_account(char *client_id) {
     if (client_idx == -1) {
         ereport("client to remove not found!");
     }
+    client_in_session[client_idx] = -1;
     all_client[client_idx] = NULL;
     fd_list[client_idx] = -1;
     for(int i = 0; i < MAX_SESSION; ++i) {
@@ -395,4 +409,43 @@ void client_join_session(char *client_id, char *session_id) {
     int client_idx = find_client(client_id);
     session_client_map[session_idx][client_idx] = true;
     session_client_map[MAX_SESSION][client_idx] = false;
+    client_in_session[client_idx] = session_idx;
+}
+
+void print_stat() {
+    printf("\n --------------- print begin -------------\n\n");
+    printf("total client count: \t%d\n\n", total_account);
+    printf("total session count: \t%d\n\n", session_count);
+    printf("map:\n");
+    for(int i = 0; i < MAX_SESSION + 1; ++i) {
+        for(int j = 0; j < MAX_ACCOUNT; ++j) {
+            printf("%d ",session_client_map[i][j]);
+        }
+        printf("\n\n");
+    }
+
+    printf("client:\n");
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        printf("%d:%s ", i, all_client[i]);
+    }
+    printf("\n");
+
+    printf("session: \n");
+    for(int i = 0; i < MAX_SESSION; ++i) {
+        printf("%d:%s ", i, session[i]);
+    }
+    printf("\n\n");
+
+    printf("client_in_session:\n");
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        printf("%d:%d ", i, client_in_session[i]);
+    }
+    printf("\n\n");
+
+    printf("fd_list:\n");
+    for(int i = 0; i < MAX_ACCOUNT; ++i) {
+        printf("%d:%d ", i, fd_list[i]);
+    }
+    
+    printf("\n\n --------- print done --------------\n");
 }

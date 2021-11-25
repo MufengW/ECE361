@@ -48,8 +48,12 @@ bool get_and_process_prompt(struct message *msg) {
 void get_input(char *buf) {
     if (!login) {
         printf("\nInput your prompt below:\n\n>> ");
-    } else {
+    } else if (!in_session) {
         printf("\n\n%s:$ ", current_client);
+        fflush(stdout);
+    } else {
+        printf("\n\n[%s]%s:$ ", current_session, current_client);
+    fflush(stdout);
     }
     fgets(buf, MAX_DATA, stdin);
 }
@@ -166,9 +170,11 @@ static void process_login(struct message *msg) {
         case LO_ACK: {
             printf("\nlogin successful!\n");
             login = true;
-
-            current_client = (char *) malloc(sizeof(char) * MAX_NAME);
-            set_str_val(current_client, (char *) msg->source);
+        if(strcmp((char *)msg->data, "") != 0) {
+            set_str_val(current_session, (char *)msg->data);
+            in_session = true;
+        }
+            set_str_val(current_client, (char *)msg->source);
             break;
         }
         case LO_NAK: {
@@ -218,7 +224,7 @@ static void process_logout(struct message *msg){
         exit(1);
     }
     printf("\naccount %s have successfully logged out!\n", current_client);
-    current_client = "";
+    memset(current_client, 0, MAX_DATA);
     sockfd = -1;
     // logout command finished
     pthread_mutex_lock(&lock_logout);
@@ -263,7 +269,8 @@ static void process_newsession(struct message *msg) {
         case NS_ACK: {
             char *session_id = (char *) msg->data;
             printf("\nnew session %s created!\n", session_id);
-            current_session = session_id;
+            set_str_val(current_session, session_id);
+        in_session = true;
             break;
         }
         case NS_NAK: {
@@ -319,7 +326,8 @@ static void process_joinsession(struct message *msg) {
         case JN_ACK: {
             char *session_id = (char *) msg->data;
             printf("\njoining session %s...\n", session_id);
-            current_session = session_id;
+            set_str_val(current_session, session_id);
+        in_session = true;
             break;
         }
         case JN_NAK: {
@@ -346,6 +354,8 @@ static void do_leavesession(struct message *msg) {
     detect_extra_input();
 
     set_str_val((char *) msg->source, current_client);
+    memset(current_session, 0, MAX_DATA);
+    in_session = false;
     send_message(msg, sockfd);
     printf("\nclient %s has left all the sessions!\n", current_client);
 }

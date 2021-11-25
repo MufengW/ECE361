@@ -33,6 +33,7 @@ int listen_sockfd;
 char *all_client[MAX_ACCOUNT];
 int fd_list[MAX_ACCOUNT];
 bool login_client[MAX_ACCOUNT];
+int client_in_session[MAX_ACCOUNT];
 
 char credentials[MAX_ACCOUNT][MAX_NAME];
 int total_credentials = 0;
@@ -71,6 +72,8 @@ void client_join_session(char *client_id, char *session_id);
 static enum session_stat check_session(char *session_id);
 
 void client_join_session(char *client_id, char *session_id);
+
+void print_stat();
 
 static void (*process_message[20])(struct message *msg, int sockfd) = {
     do_login, // LOGIN

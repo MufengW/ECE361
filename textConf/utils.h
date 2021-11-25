@@ -33,8 +33,8 @@
 
 #define DELIMITER ':'
 #define BACKLOG 10
-#define MAX_ACCOUNT 20
-#define MAX_SESSION 20
+#define MAX_ACCOUNT 6
+#define MAX_SESSION 6
 
 enum type {
     LOGIN = 0,
