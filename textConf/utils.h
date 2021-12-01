@@ -39,6 +39,7 @@
 enum type {
     LOGIN = 0,
     EXIT,
+    REGISTER,
     NEW_SESS,
     JOIN,
     LEAVE_SESS,
@@ -49,6 +50,8 @@ enum type {
 
     LO_ACK,
     LO_NAK,
+    REG_ACK,
+    REG_NAK,
     EXIT_DONE, // new added
     NS_ACK,
     NS_NAK,

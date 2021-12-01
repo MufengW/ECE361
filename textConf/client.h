@@ -13,6 +13,9 @@ bool done_login;
 pthread_mutex_t lock_logout = PTHREAD_MUTEX_INITIALIZER;
 bool done_logout;
 
+pthread_mutex_t lock_register = PTHREAD_MUTEX_INITIALIZER;
+bool done_register;
+
 pthread_mutex_t lock_newsession = PTHREAD_MUTEX_INITIALIZER;
 bool done_newsession;
 
@@ -42,6 +45,7 @@ bool get_and_process_prompt(struct message *msg);
 void connect_to_server(char *server_ip, char *server_port, int *sockfd);
 
 static void process_login(struct message *msg);
+static void process_register(struct message *msg);
 static void process_logout(struct message *msg);
 static void process_newsession(struct message *msg);
 static void process_joinsession(struct message *msg);
@@ -50,6 +54,7 @@ static void process_message(struct message *msg);
 
 static void do_login(struct message *msg);
 static void do_logout(struct message *msg);
+static void do_register(struct message *msg);
 static void do_newsession(struct message *msg);
 static void do_joinsession(struct message *msg);
 static void do_leavesession(struct message *msg);
@@ -58,9 +63,10 @@ static void do_quit(struct message *msg);
 static void do_message(struct message *msg);
 static void do_again(struct message *msg);
 
-static void (*do_input[20])(struct message *msg) = {
+static void (*do_input[21])(struct message *msg) = {
     do_login, // LOGIN
     do_logout, // EXIT
+    do_register, //REGISTER
     do_newsession, //NEW_SESS
     do_joinsession, //JOIN
     do_leavesession, //LEAVE_SESS
@@ -71,6 +77,8 @@ static void (*do_input[20])(struct message *msg) = {
 
     process_login, // LO_ACK
     process_login, //LO_NAK
+    process_register, // REG_ACK
+    process_register, // REG_NAK
     process_logout, //LOGOUT_DONE
     process_newsession, // NS_ACK
     process_newsession, // NS_NAK
