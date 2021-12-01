@@ -5,7 +5,7 @@ int main() {
 
     pthread_create(&prompt_thread, NULL, (void *) get_prompt, NULL);
     pthread_create(&message_thread, NULL, (void *) get_message, NULL);
-    
+
     pthread_join(prompt_thread, 0);
     return 0;
 }
@@ -22,9 +22,9 @@ void get_message() {
     struct message *msg = (struct message *) malloc(sizeof(struct message));
     while (1) {
         if (connected && sockfd != -1) {
-            if(!recv_message(msg, sockfd)) continue;
-            if(!connected) return;
-                (*do_input[msg->msg_type])(msg);
+            if (!recv_message(msg, sockfd)) continue;
+            if (!connected) return;
+            (*do_input[msg->msg_type])(msg);
         }
     }
 }
@@ -53,7 +53,7 @@ void get_input(char *buf) {
         fflush(stdout);
     } else {
         printf("\n\n[%s]%s:$ ", current_session, current_client);
-    fflush(stdout);
+        fflush(stdout);
     }
     fgets(buf, MAX_DATA, stdin);
 }
@@ -70,9 +70,9 @@ static bool process_input(struct message *msg, char *buf) {
         printf("\ndata empty, try input again!\n");
         return false;
     }
-    set_str_val((char *)msg->data, buf);
+    set_str_val((char *) msg->data, buf);
     msg->msg_type = get_type(first_word);
-    if((msg->msg_type) >= LO_ACK) ereport("unknown message type!");
+    if ((msg->msg_type) >= LO_ACK) ereport("unknown message type!");
     (*do_input[msg->msg_type])(msg);
     return (msg->msg_type == QUIT);
 }
@@ -81,18 +81,19 @@ static bool process_input(struct message *msg, char *buf) {
 enum type get_type(char *first_word) {
     if (strcmp(first_word, "/login") == 0) return LOGIN;
     if (strcmp(first_word, "/logout") == 0) return EXIT;
+    if (strcmp(first_word, "/register") == 0) return REGISTER;
     if (strcmp(first_word, "/joinsession") == 0) return JOIN;
     if (strcmp(first_word, "/leavesession") == 0) return LEAVE_SESS;
     if (strcmp(first_word, "/createsession") == 0) return NEW_SESS;
     if (strcmp(first_word, "/list") == 0) return QUERY;
     if (strcmp(first_word, "/quit") == 0) return QUIT;
 
-    if(first_word[0] == '/') {
+    if (first_word[0] == '/') {
         printf("unrecognized command, do you want to send it as a message?(y/n)\n\n>> ");
         char buf[MAX_DATA];
         memset(buf, 0, MAX_DATA);
         fgets(buf, MAX_DATA, stdin);
-        if((strcmp(buf,"y\n") == 0) || (strcmp(buf, "yes\n") == 0)) {
+        if ((strcmp(buf, "y\n") == 0) || (strcmp(buf, "yes\n") == 0)) {
             return MESSAGE;
         } else {
             return AGAIN;
@@ -151,8 +152,8 @@ static void do_login(struct message *msg) {
     detect_extra_input();
 
 //    if (!connected) {
-        connect_to_server(server_ip, server_port, &sockfd);
-        connected = true;
+    connect_to_server(server_ip, server_port, &sockfd);
+    connected = true;
 //    }
 
     set_str_val((char *) msg->data, password);
@@ -160,7 +161,7 @@ static void do_login(struct message *msg) {
     set_str_val((char *) msg->source, client_id);
     send_message(msg, sockfd);
     // need to wait for process ack
-    while(!done_login) {
+    while (!done_login) {
         pthread_yield();
     }
 }
@@ -170,14 +171,14 @@ static void process_login(struct message *msg) {
         case LO_ACK: {
             printf("\nlogin successful!\n");
             login = true;
-        if(strcmp((char *)msg->data, "") != 0) {
-            set_str_val(current_session, (char *)msg->data);
-            in_session = true;
-        } else {
-            memset(current_session, 0, MAX_DATA);
-            in_session = false;
-    }
-            set_str_val(current_client, (char *)msg->source);
+            if (strcmp((char *) msg->data, "") != 0) {
+                set_str_val(current_session, (char *) msg->data);
+                in_session = true;
+            } else {
+                memset(current_session, 0, MAX_DATA);
+                in_session = false;
+            }
+            set_str_val(current_client, (char *) msg->source);
             break;
         }
         case LO_NAK: {
@@ -212,12 +213,12 @@ static void do_logout(struct message *msg) {
     set_str_val((char *) msg->source, current_client);
     send_message(msg, sockfd);
     // need to wait for process ack
-    while(!done_logout) {
+    while (!done_logout) {
         pthread_yield();
     }
 }
 
-static void process_logout(struct message *msg){
+static void process_logout(struct message *msg) {
     pthread_mutex_lock(&lock);
     login = false;
     connected = false;
@@ -234,6 +235,68 @@ static void process_logout(struct message *msg){
     done_logout = true;
     pthread_mutex_unlock(&lock_logout);
 }
+
+static void do_register(struct message *msg) {
+    if (login) {
+        printf("\nplease logout first\n");
+        return;
+    }
+    char delim[] = " \n\t\v\f\r";
+    char *client_id = strtok(NULL, delim);
+    char *password = strtok(NULL, delim);
+    char *password_repeat = strtok(NULL, delim);
+    char *server_ip = strtok(NULL, delim);
+    char *server_port = strtok(NULL, delim);
+    if (server_port == NULL) {
+        printf("\nregister format error, please register with command:\n\n/register <client id> <password> <repeat_password> <server_ip> <server_port>\n\n");
+        return;
+    }
+
+    if (strcmp(password, password_repeat) != 0) {
+        printf("\npassword do not match\n\n");
+        return;
+    }
+
+    detect_extra_input();
+
+    connect_to_server(server_ip, server_port, &sockfd);
+    connected = true;
+
+    set_str_val((char *) msg->data, password);
+    msg->size = strlen((const char *) msg->data);
+    set_str_val((char *) msg->source, client_id);
+    send_message(msg, sockfd);
+    // need to wait for process ack
+    while (!done_register) {
+        pthread_yield();
+    }
+}
+
+
+static void process_register(struct message *msg) {
+    switch (msg->msg_type) {
+        case REG_ACK: {
+            printf("\nregister successful! try login now.\n");
+            break;
+        }
+        case REG_NAK: {
+            printf("%s", msg->data);
+            break;
+        }
+        default: {
+            ereport("unknown message type!");
+            break;
+        }
+    }
+    connected = false;
+    close(sockfd);
+
+    // register command finished
+    pthread_mutex_lock(&lock_register);
+    done_register = true;
+    pthread_mutex_unlock(&lock_register);
+}
+
 
 static void do_newsession(struct message *msg) {
     if (!login) {
@@ -262,7 +325,7 @@ static void do_newsession(struct message *msg) {
     send_message(msg, sockfd);
 
     // need to wait for process ack
-    while(!done_newsession) {
+    while (!done_newsession) {
         pthread_yield();
     }
 }
@@ -318,10 +381,10 @@ static void do_joinsession(struct message *msg) {
     send_message(msg, sockfd);
 
     // need to wait for process ack
-    while(!done_joinsession) {
+    while (!done_joinsession) {
         pthread_yield();
     }
-    if(update_session) {
+    if (update_session) {
         memset(current_session, 0, MAX_DATA);
         set_str_val(current_session, session_id);
     }
@@ -331,14 +394,14 @@ static void do_joinsession(struct message *msg) {
 static void process_joinsession(struct message *msg) {
     switch (msg->msg_type) {
         case JN_ACK: {
-            printf("%s",msg->data);
+            printf("%s", msg->data);
             in_session = true;
-        update_session = true;
+            update_session = true;
             break;
         }
         case JN_NAK: {
             printf("%s", msg->data);
-        update_session = false;
+            update_session = false;
             break;
         }
         default: {
@@ -382,7 +445,7 @@ static void do_query(struct message *msg) {
 
     send_message(msg, sockfd);
 
-    while(!done_query) {
+    while (!done_query) {
         pthread_yield();
     }
 }
@@ -404,14 +467,14 @@ static void do_message(struct message *msg) {
         return;
     }
 
-    set_str_val((char *)msg->source, current_client);
+    set_str_val((char *) msg->source, current_client);
     send_message(msg, sockfd);
     //printf("\nyour message has been sent\n");
 }
 
 static void process_message(struct message *msg) {
-    if(in_session) {
-        printf("%s[%s]%s:$ ",msg->data, current_session, current_client);
+    if (in_session) {
+        printf("%s[%s]%s:$ ", msg->data, current_session, current_client);
     } else {
         printf("%s%s:$ ", msg->data, current_client);
     }
@@ -419,7 +482,7 @@ static void process_message(struct message *msg) {
 }
 
 static void do_quit(struct message *msg) {
-    if(pthread_self() == message_thread) {
+    if (pthread_self() == message_thread) {
         // special case! server down!
         printf("server down, quitting...\n");
         exit(0);
@@ -430,7 +493,7 @@ static void do_quit(struct message *msg) {
     }
     detect_extra_input();
 
-    set_str_val((char *)msg->source, current_client);
+    set_str_val((char *) msg->source, current_client);
     send_message(msg, sockfd);
     printf("\ngoodbye!\n\n");
     return;

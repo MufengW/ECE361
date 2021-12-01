@@ -17,8 +17,9 @@ enum session_stat {
 };
 
 const char *account_not_exist = "\nthis account does not exist!\n\n";
+const char *already_registered = "\nthis account has already been registered!\n\n";
 const char *wrong_password = "\nwrong password!\n\n";
-const char *already_login = "\nthis account has alreay logged in on another machine!\n\n";
+const char *already_login = "\nthis account has already logged in on another machine!\n\n";
 const char *no_more_account = "\ntoo many users online, need to wait for someone to logout!\n\n";
 
 
@@ -52,9 +53,11 @@ static void int_handler();
 static void init_global();
 void recv_main_loop(int *listen_sockfd);
 static void read_credentials();
+static void add_credentials(char* new_cred);
 
 static void do_login(struct message *msg, int sockfd);
 static void do_logout(struct message *msg, int sockfd);
+static void do_register(struct message *msg, int sockfd);
 static void do_newsession(struct message *msg, int sockfd);
 static void do_joinsession(struct message *msg, int sockfd);
 static void do_leavesession(struct message *msg, int sockfd);
@@ -79,7 +82,8 @@ void print_stat();
 
 static void (*process_message[20])(struct message *msg, int sockfd) = {
     do_login, // LOGIN
-    do_logout, // EXIT,
+    do_logout, // EXIT
+    do_register, //REGISTER
     do_newsession, // NEW_SESS
     do_joinsession, // JOIN
     do_leavesession, // LEAVE_SESS
