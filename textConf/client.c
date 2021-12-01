@@ -241,6 +241,9 @@ static void do_register(struct message *msg) {
         printf("\nplease logout first\n");
         return;
     }
+    pthread_mutex_lock(&lock_register);
+    done_register = false;
+    pthread_mutex_unlock(&lock_register);
     char delim[] = " \n\t\v\f\r";
     char *client_id = strtok(NULL, delim);
     char *password = strtok(NULL, delim);
