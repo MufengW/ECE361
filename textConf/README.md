@@ -1,1 +1,3 @@
-#Text Conferencing
+# Text Conferencing
+## Additional Features
+### User Registration
