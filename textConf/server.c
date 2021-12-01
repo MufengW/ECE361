@@ -409,8 +409,6 @@ void add_session(char *session_id) {
 static enum account_stat check_account(char *client_id, char *password) {
     if (find_client(client_id) >= 0 && login_client[find_client(client_id)]) return ALREADY_LOGIN;
     if (total_account == MAX_ACCOUNT) return NO_MORE_ACCOUNT;
-    printf("%s\n", client_id);
-    printf("%d\n", total_credentials);
     for (int i = 0; i < total_credentials; i++) {
         char cred[MAX_NAME];
         strcpy(cred, credentials[i]);
