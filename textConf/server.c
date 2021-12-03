@@ -41,6 +41,7 @@ void read_credentials() {
     total_credentials = 0;
     while (!feof(credentials_file)) {
         fgets(credentials[total_credentials], MAX_NAME, credentials_file);
+        fflush(stdin);
         total_credentials++;
     }
     fclose(credentials_file);
@@ -460,13 +461,13 @@ void print_stat() {
         printf("\n");
     }
 
-    printf("client:\n");
+    printf("\nclient:\n");
     for (int i = 0; i < MAX_ACCOUNT; ++i) {
         printf("%d:%s ", i, all_client[i]);
     }
-    printf("\n\n");
+    printf("\n");
 
-    printf("session: \n");
+    printf("\nsession: \n");
     for (int i = 0; i < MAX_SESSION; ++i) {
         printf("%d:%s ", i, session[i]);
     }
@@ -474,7 +475,8 @@ void print_stat() {
 
     printf("client_in_session:\n");
     for (int i = 0; i < MAX_ACCOUNT; ++i) {
-        printf("%d:%d ", i, client_in_session[i]);
+	    if(all_client[i] == NULL) continue;
+        printf("%s:%s ", all_client[i], (client_in_session[i] == -1 ? "not in session":session[client_in_session[i]]));
     }
     printf("\n\n");
 
@@ -486,7 +488,7 @@ void print_stat() {
 
     printf("fd_list:\n");
     for (int i = 0; i < MAX_ACCOUNT; ++i) {
-        printf("%d:%d ", i, fd_list[i]);
+        printf("%s:%d ", all_client[i], fd_list[i]);
     }
 
     printf("\n\n --------------- print done ---------------\n\n");
