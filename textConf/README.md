@@ -1,6 +1,17 @@
 # Text Conferencing
 ## Additional Features
 ### User Registration
+The first feature we added is to enable a user to register
+
+#### How it works:
+
+A local file is created to store user credentials. If a username is not found in the credential file, login would fail.
+New uses could use `/register <username> <password> <repeat_password> <server_address> <server_port>` to register a new account. The new account will be stored in the server's credential file so the user could still use the credentials to login after a server restart.
+
+#### How we implemented it:
+
+We created a file to store the credentials. The format of the file is similar to CSV where each line is a pair of username and password separated by a comma.
+When the server starts, it reads the data from the credential file and store it as an array. The lenght of the array is the same as the number of lines in the credential file. When a user is trying to login, server will check the credential array to verify the username and password. If a user registers, server will put a new pair of username and password in to the exsiting file and then refresh the array based on the updated credential file. Since the credential file is stored on the disk, new credentials will be persisted for future use.
 
 ### Multi-session
 The second feature we added is to enable a client to join/create multiple sessions.
